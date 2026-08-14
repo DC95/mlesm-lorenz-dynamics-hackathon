@@ -36,7 +36,9 @@ class FlowMLP(nn.Module):
 
         self.prediction_type = prediction_type
         self.conditioned = conditioned
-        input_dim = 6 if conditioned else 3
+        # The lean Team B comparison conditions on rho only. Sigma and beta remain
+        # fixed properties of the reference system and are not model inputs.
+        input_dim = 4 if conditioned else 3
         activation_cls = _activation(activation)
 
         layers: list[nn.Module] = [nn.Linear(input_dim, hidden_dim), activation_cls()]
@@ -53,7 +55,8 @@ class FlowMLP(nn.Module):
         if self.conditioned:
             if parameters is None:
                 raise ValueError("A conditioned model requires normalized parameters.")
-            inputs = torch.cat((states, parameters), dim=-1)
+            rho = parameters[..., 1:2]
+            inputs = torch.cat((states, rho), dim=-1)
         else:
             inputs = states
 
@@ -72,7 +75,7 @@ class LinearFlow(nn.Module):
             raise ValueError("prediction_type must be 'direct' or 'residual'.")
         self.prediction_type = prediction_type
         self.conditioned = conditioned
-        self.network = nn.Linear(6 if conditioned else 3, 3)
+        self.network = nn.Linear(4 if conditioned else 3, 3)
 
     def forward(
         self,
@@ -82,7 +85,8 @@ class LinearFlow(nn.Module):
         if self.conditioned:
             if parameters is None:
                 raise ValueError("A conditioned model requires normalized parameters.")
-            inputs = torch.cat((states, parameters), dim=-1)
+            rho = parameters[..., 1:2]
+            inputs = torch.cat((states, rho), dim=-1)
         else:
             inputs = states
         output = self.network(inputs)
