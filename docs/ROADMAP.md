@@ -1,6 +1,6 @@
 # Organizer Roadmap
 
-**Current state:** Scientific scope frozen; implementation alignment pending  
+**Current state:** Scientific scope frozen; implementation aligned locally; JURECA rehearsal pending  
 **Public release:** 18 August 2026  
 **Hackathon start:** 19 August 2026
 
@@ -13,7 +13,7 @@ This page records what is complete, what remains provisional, and the order in w
 | [`scientific_challenge_contract_v1.0.md`](scientific_challenge_contract_v1.0.md) | Scientific question, lean team scope, evidence categories, and required outputs | **Current authority** |
 | [`lorenz63_primer.md`](lorenz63_primer.md) | Participant introduction to Lorenz-63 and its connection to the experiments | **Complete** |
 | [`benchmark_spec_v0.1.md`](benchmark_spec_v0.1.md) | Earlier numerical and implementation proposal | **Superseded draft; retain temporarily for implementation history** |
-| [`../starter/README.md`](../starter/README.md) | Commands and implementation overview | **Provisional; not yet aligned with contract v1.0** |
+| [`../starter/README.md`](../starter/README.md) | Commands and implementation overview | **Aligned with contract v1.0; numerical values provisional** |
 | [`../original_materials/`](../original_materials/) | Earlier challenge brief and teaching notebook | **Preserved source material** |
 
 If documents disagree about scientific scope, the contract v1.0 takes precedence.
@@ -25,18 +25,18 @@ If documents disagree about scientific scope, the contract v1.0 takes precedence
 | Preserve original materials | Complete | Original PDF and notebook are unchanged. |
 | Freeze the scientific direction | Complete | Contract v1.0 defines the lean shared baseline and one intervention per team. |
 | Introduce Lorenz-63 | Complete | The 10–15-minute participant primer is available. |
-| Build the numerical foundation | Preliminary | RK4 integration, trajectory-disjoint data generation, and numerical smoke tests exist. |
-| Build the ML foundation | Preliminary | Direct, residual, conditioned, one-step, and multi-step mechanisms exist, but the experiment configurations predate v1.0. |
-| Build the evaluation foundation | Preliminary | Forecast, stability, perturbation, distribution, and lobe diagnostics exist but have not completed an end-to-end JURECA rehearsal. |
-| Align mandatory experiments | **Next** | Create clean A0/A1 and B1/B2 comparisons with only the intended variable changed. |
-| Rehearse on JURECA | Pending | Complete data generation, training, evaluation, plotting, and runtime measurement. |
+| Build the numerical foundation | Implemented locally | RK4 integration, trajectory-disjoint data generation, and numerical smoke tests pass locally. |
+| Build the ML foundation | Implemented locally | Clean direct A0/A1 and state-only/conditioned B1/B2 configurations and matched seed matrices exist. Full PyTorch verification awaits JURECA. |
+| Build the evaluation foundation | Implemented locally | Persistence rollout, forecast, stability, perturbation, distribution, and lobe diagnostics share one evaluator. End-to-end execution awaits JURECA. |
+| Align mandatory experiments | Complete | Contract tests enforce that A0/A1 change only rollout horizon and B1/B2 change only `rho` conditioning. |
+| Rehearse on JURECA | **Next** | Complete data generation, training, evaluation, plotting, and runtime measurement. |
 | Freeze the benchmark | Pending | Fix numerical values, datasets, checksums, seeds, stability thresholds, and runtime budget. |
 | Prepare participant release | Pending | Final commands, team pages, schedule, result templates, licence, and clean-account test. |
 | Create team branches and publish | Pending | Branch from the frozen release and make the repository public. |
 
 ## 3. Mandatory configuration alignment
 
-The current starter configurations reflect an earlier, broader design. They must be replaced by the following controlled comparisons before JURECA results are interpreted.
+The starter configurations now implement the following controlled comparisons. Automated tests guard them against accidental confounders before JURECA results are interpreted.
 
 ### Team A
 
@@ -72,16 +72,15 @@ These settings must be fixed before teams see final test results.
 
 ## 5. Build sequence from here
 
-1. Align A0/A1 and B1/B2 configurations and seed matrices.
-2. Run numerical and PyTorch tests in the shared JURECA environment.
-3. Generate the standard and multi-$\rho$ datasets.
-4. Train and evaluate all four mandatory configurations.
-5. Inspect the four-panel model autopsies and record runtime and failure modes.
-6. Simplify the code and commands based on the rehearsal.
-7. Freeze datasets and publish checksums.
-8. Write the participant team pages, schedule, experiment ledger, and presentation template.
-9. Run the entire workflow from a clean participant-like account.
-10. Merge the frozen release, create team branches, select the licence, and make the repository public.
+1. Run numerical, configuration, and PyTorch tests in the shared JURECA environment.
+2. Generate the standard and multi-$\rho$ datasets.
+3. Train and evaluate all four mandatory configurations over seeds 41–43.
+4. Inspect the four-panel model autopsies and record runtime and failure modes.
+5. Simplify the code and commands based on the rehearsal.
+6. Freeze datasets and publish checksums.
+7. Write the participant team pages, schedule, experiment ledger, and presentation template.
+8. Run the entire workflow from a clean participant-like account.
+9. Merge the frozen release, create team branches, select the licence, and make the repository public.
 
 ## 6. Release gates
 
