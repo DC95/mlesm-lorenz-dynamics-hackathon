@@ -1,0 +1,22 @@
+{
+  "data_path": "data/multirho_benchmark.npz",
+  "output_dir": "runs/b1_multirho_state_only_seed42",
+  "seed": 42,
+  "device": "auto",
+  "model": {
+    "architecture": "mlp",
+    "prediction_type": "direct",
+    "conditioned": false,
+    "hidden_dim": 64,
+    "hidden_layers": 3,
+    "activation": "tanh"
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 512,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "rollout_steps": 1,
+    "num_workers": 0
+  }
+}
