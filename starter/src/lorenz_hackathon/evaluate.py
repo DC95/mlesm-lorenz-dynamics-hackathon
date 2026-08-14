@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from .baselines import persistence_rollout
 from .dynamics import LorenzParameters, integrate_lorenz
 from .models import FlowModel, build_model
 from .train import select_device
@@ -140,6 +141,15 @@ def evaluate_rho_group(
     )
     normalized_error = (forecast_model - forecast_truth) / state_std
     nrmse_by_lead = np.sqrt(np.nanmean(normalized_error**2, axis=(0, 2)))
+    forecast_persistence = persistence_rollout(
+        forecast_truth[:, 0], forecast_steps
+    )
+    persistence_normalized_error = (
+        forecast_persistence - forecast_truth
+    ) / state_std
+    persistence_nrmse_by_lead = np.sqrt(
+        np.nanmean(persistence_normalized_error**2, axis=(0, 2))
+    )
 
     one_step_inputs = states[:, :-1].reshape(-1, 3).astype(np.float64)
     one_step_targets = states[:, 1:].reshape(-1, 3).astype(np.float64)
@@ -251,7 +261,13 @@ def evaluate_rho_group(
             "useful_horizon_nrmse_1": first_threshold_time(
                 nrmse_by_lead, 1.0, delta_t
             ),
+            "persistence_useful_horizon_nrmse_1": first_threshold_time(
+                persistence_nrmse_by_lead, 1.0, delta_t
+            ),
             "nrmse_by_lead": [finite_or_none(value) for value in nrmse_by_lead],
+            "persistence_nrmse_by_lead": [
+                finite_or_none(value) for value in persistence_nrmse_by_lead
+            ],
         },
         "stability": {
             "finite_trajectory_fraction": float(np.mean(finite_trajectories)),
@@ -299,9 +315,16 @@ def evaluate_rho_group(
     figure, axes = plt.subplots(2, 2, figsize=(11, 8.5))
     lead_times = np.arange(forecast_steps + 1) * delta_t
     axes[0, 0].plot(lead_times, nrmse_by_lead, label="Learned emulator")
+    axes[0, 0].plot(
+        lead_times,
+        persistence_nrmse_by_lead,
+        label="Persistence",
+        linestyle=":",
+    )
     axes[0, 0].axhline(1.0, color="black", linestyle="--", linewidth=1)
     axes[0, 0].set(xlabel="Lead time", ylabel="Normalized RMSE", title="Forecast skill")
     axes[0, 0].grid(alpha=0.3)
+    axes[0, 0].legend()
 
     axes[0, 1].plot(
         reference_climate[0, :, 0],
