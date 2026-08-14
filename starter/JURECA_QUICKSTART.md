@@ -1,28 +1,55 @@
 # JURECA-DC quick start for organizers and participants
 
-This page deliberately avoids hard-coding a JURECA software stage or module version. The organizer must create and rehearse one shared environment before the event, then give every participant the same activation script.
+This page records the JURECA software stack rehearsed for the August 2026
+event. The versions are pinned in `environment/modules.sh`; update and rehearse
+that file before reusing the challenge on a later JSC software stage.
 
 Official system documentation:
 
 - Batch system: <https://apps.fz-juelich.de/jsc/hps/jureca/batchsystem.html>
 - GPU computing: <https://apps.fz-juelich.de/jsc/hps/jureca/gpu-computing.html>
 
-## 1. Organizer environment
+## 1. Reproducible shared environment
 
-Prepare a shared environment containing Python 3.10 or newer, NumPy, CUDA-enabled PyTorch, Matplotlib, and this starter package installed in editable mode. Participants set:
+The minimal environment workflow in `environment/` is adapted from the JSC
+[`sc_venv_template`](https://gitlab.jsc.fz-juelich.de/kesselheim1/sc_venv_template).
+It pins the rehearsed JURECA module stack, creates one project-level virtual
+environment, and keeps each checkout's source code branch-local.
+
+The organizer creates the environment once:
 
 ```bash
-export HACKATHON_ACTIVATE=/absolute/path/to/activate_hackathon_env.sh
+cd starter
+bash environment/setup.sh
 ```
 
-Do not install packages inside production jobs; the `dc-gpu` production partition does not provide internet access.
+The default shared location is:
+
+```text
+/p/project1/training2635/mlesm-lorenz-hackathon-2026/env
+```
+
+To reuse the challenge under another project, set `HACKATHON_SHARED_ROOT`
+before running `setup.sh` and before every activation.
+
+Participants and the organizer activate from their own checkout:
+
+```bash
+cd starter
+source environment/activate.sh
+```
+
+Activation exports `HACKATHON_ACTIVATE` for the supplied Slurm scripts and
+prepends the current checkout's `src` directory to `PYTHONPATH`. Team branches
+therefore share dependencies without sharing source code. Do not install
+packages inside production jobs; the `dc-gpu` production partition does not
+provide internet access.
 
 ## 2. Smoke test
 
-From the starter directory:
+From the activated starter directory:
 
 ```bash
-source "$HACKATHON_ACTIVATE"
 python -m unittest discover -s tests -v
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```

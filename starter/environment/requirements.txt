@@ -1,0 +1,2 @@
+# Runtime dependencies are supplied by the pinned JURECA modules.
+# Add only project-specific packages that are unavailable as compatible modules.

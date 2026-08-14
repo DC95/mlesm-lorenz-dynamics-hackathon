@@ -23,7 +23,10 @@ python -m pip install -e ".[test]"
 python -m unittest discover -s tests -v
 ```
 
-On JURECA, use the organizer-provided environment and Slurm scripts. See [JURECA_QUICKSTART.md](JURECA_QUICKSTART.md).
+On JURECA, use the reproducible shared environment and Slurm scripts. The
+environment shares pinned dependencies while resolving `lorenz_hackathon` from
+the current team's checkout and branch. See
+[JURECA_QUICKSTART.md](JURECA_QUICKSTART.md).
 
 ## 2. Generate the two frozen datasets
 
