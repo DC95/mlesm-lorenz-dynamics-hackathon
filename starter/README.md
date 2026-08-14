@@ -1,17 +1,17 @@
 # Lorenz Dynamics Hackathon Starter
 
-This starter package implements the common scientific benchmark for the MLESM hackathon challenge **When Is an AI Weather Model Dynamically Trustworthy?**
+This package implements the shared benchmark for **Beyond Predictive Skill: What Evidence Supports Claims of Learned Dynamics?**
 
-It intentionally separates:
+The organizer supplies a high-accuracy RK4 reference, frozen trajectory-disjoint datasets, persistence and linear baselines, a direct one-step MLP, and one evaluation interface. Participants use these common foundations to test one controlled scientific intervention per team.
 
-- the high-accuracy RK4 reference system;
-- trajectory-disjoint data generation;
-- direct, residual, one-step, multi-step, and parameter-conditioned emulators;
-- a shared evaluation harness that measures forecast skill, stability, perturbation growth, and long-term statistics.
+| Comparison | Fixed | Intended difference |
+|---|---|---|
+| Team A: A0 vs A1 | Data, normalization, direct MLP, optimizer, seeds | One-step loss vs closed-loop multi-step loss |
+| Team B: B1 vs B2 | Multi-`rho` data, normalization, direct MLP, one-step loss, optimizer, seeds | State only vs state plus `rho` |
 
-The supplied MLP is a baseline. The scientific objective is to explain when and why learned emulators reproduce or fail to reproduce the underlying dynamics.
+Numerical values remain provisional until the complete workflow has been rehearsed on JURECA.
 
-## 1. Create the environment
+## 1. Environment and tests
 
 From this directory:
 
@@ -20,84 +20,91 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e ".[test]"
-```
-
-On JURECA, use the organizer-provided environment and Slurm scripts instead of downloading packages inside a production job.
-
-See [JURECA_QUICKSTART.md](JURECA_QUICKSTART.md) for the shared-environment and four-GPU matrix workflow.
-
-## 2. Run the tests
-
-```bash
 python -m unittest discover -s tests -v
 ```
 
-## 3. Generate the standard benchmark
+On JURECA, use the organizer-provided environment and Slurm scripts. See [JURECA_QUICKSTART.md](JURECA_QUICKSTART.md).
+
+## 2. Generate the two frozen datasets
 
 ```bash
 python -m lorenz_hackathon.data \
   --config configs/benchmark_standard.json \
   --output data/standard_benchmark.npz
-```
 
-The generator uses independent trajectory seeds for training, validation, and public test data. It does not randomly mix individual time steps across splits.
-
-## 4. Train the organizer baseline
-
-```bash
-python -m lorenz_hackathon.train --config configs/train_linear.json
-python -m lorenz_hackathon.train --config configs/train_direct.json
-```
-
-## 5. Run the scientific evaluation
-
-```bash
-python -m lorenz_hackathon.evaluate \
-  --checkpoint runs/direct_seed42/best_checkpoint.pt \
-  --data data/standard_benchmark.npz \
-  --output-dir runs/direct_seed42/evaluation
-```
-
-The evaluation writes:
-
-- `benchmark_results.json`;
-- one four-panel `model_autopsy_rho_*.png` per public-test rho value.
-
-## 6. Team A starting comparison
-
-Train the direct one-step baseline and the residual multi-step configuration:
-
-```bash
-python -m lorenz_hackathon.train --config configs/train_direct.json
-python -m lorenz_hackathon.train --config configs/train_residual_multistep.json
-```
-
-This is a starting comparison, not a guaranteed fair final ablation. Team A must check whether parameter counts, training examples, optimization effort, and model selection remain comparable.
-
-## 7. Team B starting comparison
-
-Generate the multi-parameter dataset and train the conditioned model:
-
-```bash
 python -m lorenz_hackathon.data \
-  --config configs/benchmark_conditioned.json \
-  --output data/conditioned_benchmark.npz
-
-python -m lorenz_hackathon.train --config configs/train_conditioned.json
-
-python -m lorenz_hackathon.evaluate \
-  --checkpoint runs/conditioned_seed42/best_checkpoint.pt \
-  --data data/conditioned_benchmark.npz \
-  --output-dir runs/conditioned_seed42/evaluation
+  --config configs/benchmark_multirho.json \
+  --output data/multirho_benchmark.npz
 ```
 
-The public test contains `rho = 24`, `30`, and `35`. The conditioned training set contains `rho = 26`, `28`, and `32`.
+The standard dataset uses `rho = 28` for trajectory-disjoint training, validation, and test splits. The multi-`rho` dataset uses `rho = 26, 28, 32` for training and validation, with different trajectories in each split, and `rho = 24, 30` for the public changed-dynamics test.
 
-## 8. Reproducibility rules
+Team A uses only the standard dataset. B1 and B2 use exactly the same multi-`rho` training and validation data. Team B is evaluated on both the changed-dynamics test and the separate standard `rho = 28` test as an in-distribution reference.
 
-- Never use public-test results to recompute normalization statistics.
-- Never mix states from one physical trajectory between training and validation.
-- Keep the configuration, seed, checkpoint, and result file together.
-- Report any clipping, projection, early termination, or post-processing applied during rollout.
-- Evaluate each principal configuration over at least three training seeds.
+Normalization is always computed from the training split of the selected dataset and saved in the checkpoint. Test data never changes it.
+
+## 3. Reproduce the shared organizer baseline
+
+The shared baseline matrix trains the direct one-step MLP at seeds 41–43 and one linear reference at seed 42:
+
+```bash
+bash scripts/train_matrix_worker.sh configs/matrix_shared_baseline_seeds.txt
+```
+
+Persistence requires no training. It is evaluated as a no-change rollout at every forecast lead and appears beside the learned model in each forecast-skill panel.
+
+## 4. Run the mandatory comparisons
+
+```bash
+# Team A: A0 one-step vs A1 multi-step, matched seeds 41–43
+bash scripts/train_matrix_worker.sh configs/matrix_team_a_seeds.txt
+
+# Team B: B1 state-only vs B2 state-plus-rho, matched seeds 41–43
+bash scripts/train_matrix_worker.sh configs/matrix_team_b_seeds.txt
+```
+
+On a four-task JURECA job, a worker processes another row after its first experiment finishes, so the six-row team matrices do not require six GPUs.
+
+## 5. Evaluate complete matrices
+
+```bash
+# Shared persistence, linear, and direct-MLP baselines at rho=28
+bash scripts/evaluate_matrix.sh \
+  configs/matrix_shared_baseline_seeds.txt \
+  data/standard_benchmark.npz \
+  standard_rho28
+
+# Team A at rho=28
+bash scripts/evaluate_matrix.sh \
+  configs/matrix_team_a_seeds.txt \
+  data/standard_benchmark.npz \
+  standard_rho28
+
+# Team B on unseen parameter values
+bash scripts/evaluate_matrix.sh \
+  configs/matrix_team_b_seeds.txt \
+  data/multirho_benchmark.npz \
+  changed_dynamics
+
+# Team B in-distribution reference at rho=28
+bash scripts/evaluate_matrix.sh \
+  configs/matrix_team_b_seeds.txt \
+  data/standard_benchmark.npz \
+  in_distribution_rho28
+```
+
+Each checkpoint receives an evaluation directory containing:
+
+- `benchmark_results.json`, including one-step error, learned and persistence rollout error, stability, perturbation growth, and long-term statistics;
+- one four-panel `model_autopsy_rho_*.png` for every test value of `rho`.
+
+## 6. Reproducibility rules
+
+- Run the shared baseline end to end before changing a model or loss.
+- Never mix time steps from one physical trajectory across data splits.
+- Never recompute normalization from validation or test data.
+- Keep the resolved configuration, seed, checkpoint, result, and Slurm job ID together.
+- Report clipping, projection, early termination, or post-processing applied during rollout.
+- Evaluate each mandatory neural configuration at seeds 41, 42, and 43.
 - Preserve failed or inconclusive experiments in the experiment ledger.
+- Change only the intended variable in the mandatory comparison; use the configuration-consistency tests to detect accidental confounders.
