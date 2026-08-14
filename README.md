@@ -73,7 +73,7 @@ There is no single overall model score.
 └── starter/                  # Provisional code, configurations, tests, and Slurm jobs
     ├── configs/              # Data and training experiment definitions
     ├── src/                  # Lorenz data, models, training, and evaluation
-    ├── tests/                # Numerical and data-generation smoke tests
+    ├── tests/                # Smoke tests and controlled-comparison contract tests
     ├── scripts/              # Multi-experiment helpers
     └── slurm/                # JURECA job scripts
 ```
@@ -85,16 +85,17 @@ Completed:
 - scientific challenge contract v1.0;
 - participant-facing Lorenz-63 primer;
 - original-material preservation;
-- preliminary RK4, data, model, training, evaluation, test, and Slurm infrastructure.
+- clean A0/A1 and B1/B2 configurations with matched three-seed matrices;
+- persistence, linear, and neural rollout evaluation through one common harness; and
+- RK4, data, model, training, test, and Slurm infrastructure.
 
 Still required before the public release on **18 August 2026**:
 
-1. align the Team A and Team B configurations with contract v1.0;
-2. rehearse the complete workflow on JURECA;
-3. freeze numerical settings, datasets, checksums, and runtime limits;
-4. simplify and verify participant commands;
-5. select an open-source licence;
-6. complete the participant schedule and result templates; and
-7. run a clean-account organizer rehearsal.
+1. rehearse the complete workflow on JURECA;
+2. freeze numerical settings, datasets, checksums, and runtime limits;
+3. simplify and verify participant commands;
+4. select an open-source licence;
+5. complete the participant schedule and result templates; and
+6. run a clean-account organizer rehearsal.
 
-The immediate next technical step is **configuration alignment**, followed by the first complete JURECA rehearsal.
+The immediate next technical step is the **first complete JURECA rehearsal**.
