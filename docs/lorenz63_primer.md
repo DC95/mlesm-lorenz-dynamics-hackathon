@@ -92,31 +92,41 @@ When comparing two forecasts, early separation can therefore reflect both model 
 
 At the standard parameters, a long trajectory forms the familiar two-lobed **Lorenz attractor**.
 
-- The trajectory repeatedly circles one lobe and then switches to the other.
-- The lobes are associated with the two orientations of the convective circulation.
-- The trajectory remains bounded and structured but never repeats exactly.
-- The timing of future switches becomes difficult to predict.
+- In one lobe, $x$ and $y$ are mainly positive. This represents the idealized convective roll circulating in one direction.
+- In the other lobe, $x$ and $y$ are mainly negative. This represents the same roll circulating in the opposite direction.
+- The trajectory may circle one lobe several times and then cross to the other. This crossing is a **lobe switch** and represents a reversal of the idealized circulation direction.
+- The trajectory remains bounded and structured but never repeats exactly. We cannot reliably predict how many loops it will complete before the next lobe switch.
 
-The two lobes are useful analogues for regime-like behaviour, but they should not be interpreted literally as two atmospheric weather regimes.
+For this challenge, treat the lobes simply as two recurring regions of Lorenz state space. We can measure how much time a model spends in each lobe and how often it switches between them. The lobes are not specific atmospheric weather types and should not be given a literal meteorological interpretation.
 
 Short-range evaluation asks whether a model follows the correct trajectory. Long-range evaluation asks a different question: does it remain on a realistic attractor and visit its regions with realistic frequencies?
 
 ## 6. Why changing $\rho$ changes the dynamics
 
-The parameter $\rho$ represents thermal forcing. Changing it does not merely shift the data distribution; it changes the governing vector field and can change the system's qualitative behaviour.
+The parameter $\rho$ represents thermal forcing. Changing it does not merely shift the data distribution; it changes the equations that determine the next tendency and can change the system's long-term behaviour.
 
-For the same state $(x,y,z)$ at two values of $\rho$,
+Suppose the state $(x,y,z)$ is held fixed while $\rho$ changes from $\rho_1$ to $\rho_2$. The change in the $y$ tendency is
 
-$$
-\left.\frac{dy}{dt}\right|_{\rho_2}
+```math
+\Delta\left(\frac{dy}{dt}\right)
+=
+\left(\frac{dy}{dt}\right)_{\rho_2}
 -
-\left.\frac{dy}{dt}\right|_{\rho_1}
-=x(\rho_2-\rho_1).
-$$
+\left(\frac{dy}{dt}\right)_{\rho_1}
+=
+x(\rho_2-\rho_1).
+```
 
-Thus, the identical state can require a different next-step tendency when $\rho$ changes. A state-only emulator is not told which member of the Lorenz family it should follow. A parameter-conditioned emulator receives that missing information explicitly.
+In plain language: the same values of $x$, $y$, and $z$ can evolve differently under different thermal forcing. A state-only emulator is not told which value of $\rho$ governs the system. A parameter-conditioned emulator receives this missing information explicitly.
 
-Near a dynamical transition, long transients can be misleading. Team B will therefore use common burn-in periods and long reference integrations before comparing long-term behaviour.
+Near a parameter value where the system changes from one type of long-term behaviour to another, a short simulation can be deceptive. For example, a trajectory may switch irregularly between the lobes for some time but eventually settle into one steady circulation state. This temporary early behaviour is called a **transient**.
+
+The reference simulations will therefore have two parts:
+
+1. **Burn-in:** run the solver for an initial period and exclude these adjustment steps from the statistics.
+2. **Evaluation period:** continue the simulation long enough to determine whether the sustained behaviour is chaotic, periodic, or steady and to estimate its long-term distribution.
+
+The supplied evaluation code will handle both periods consistently for all models.
 
 ## 7. From equations to an AI emulator
 
