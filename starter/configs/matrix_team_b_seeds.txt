@@ -1,0 +1,7 @@
+# config seed output_directory
+configs/train_b1_multirho_state_only.json 41 runs/b1_multirho_state_only_seed41
+configs/train_b1_multirho_state_only.json 42 runs/b1_multirho_state_only_seed42
+configs/train_b1_multirho_state_only.json 43 runs/b1_multirho_state_only_seed43
+configs/train_b2_multirho_conditioned.json 41 runs/b2_multirho_conditioned_seed41
+configs/train_b2_multirho_conditioned.json 42 runs/b2_multirho_conditioned_seed42
+configs/train_b2_multirho_conditioned.json 43 runs/b2_multirho_conditioned_seed43
