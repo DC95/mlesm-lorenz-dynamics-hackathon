@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-matrix_file=${1:-configs/matrix_direct_seeds.txt}
+matrix_file=${1:-configs/matrix_shared_baseline_seeds.txt}
 
 if [[ -z "${HACKATHON_ACTIVATE:-}" ]]; then
     echo "Set HACKATHON_ACTIVATE to the organizer-provided activation script." >&2
@@ -30,4 +30,4 @@ if not torch.cuda.is_available():
     raise SystemExit("CUDA is unavailable")
 PY
 
-srun --exclusive scripts/train_matrix_worker.sh "$matrix_file"
+srun --exclusive bash scripts/train_matrix_worker.sh "$matrix_file"
