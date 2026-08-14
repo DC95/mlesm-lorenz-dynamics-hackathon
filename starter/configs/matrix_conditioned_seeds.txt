@@ -1,0 +1,6 @@
+# config seed output_directory
+configs/train_conditioned.json 41 runs/conditioned_seed41
+configs/train_conditioned.json 42 runs/conditioned_seed42
+configs/train_conditioned.json 43 runs/conditioned_seed43
+configs/train_direct.json 42 runs/direct_standard_for_shift_test
+

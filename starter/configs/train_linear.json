@@ -1,0 +1,20 @@
+{
+  "data_path": "data/standard_benchmark.npz",
+  "output_dir": "runs/linear_seed42",
+  "seed": 42,
+  "device": "auto",
+  "model": {
+    "architecture": "linear",
+    "prediction_type": "residual",
+    "conditioned": false
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 512,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "rollout_steps": 1,
+    "num_workers": 0
+  }
+}
+

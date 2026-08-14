@@ -1,0 +1,6 @@
+# config seed output_directory
+configs/train_direct.json 41 runs/direct_seed41
+configs/train_direct.json 42 runs/direct_seed42
+configs/train_direct.json 43 runs/direct_seed43
+configs/train_linear.json 42 runs/linear_seed42
+

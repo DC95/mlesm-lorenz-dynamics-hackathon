@@ -1,0 +1,32 @@
+{
+  "reference": {
+    "sigma": 10.0,
+    "beta": 2.6666666666666665,
+    "dt_reference": 0.001,
+    "delta_t": 0.05,
+    "burn_in_time": 20.0,
+    "initial_low": -20.0,
+    "initial_high": 20.0
+  },
+  "splits": {
+    "train": {
+      "rhos": [26.0, 28.0, 32.0],
+      "trajectories_per_rho": 128,
+      "steps": 400,
+      "seed": 4404
+    },
+    "validation": {
+      "rhos": [26.0, 28.0, 32.0],
+      "trajectories_per_rho": 32,
+      "steps": 400,
+      "seed": 5505
+    },
+    "public_test": {
+      "rhos": [24.0, 30.0, 35.0],
+      "trajectories_per_rho": 64,
+      "steps": 400,
+      "seed": 6606
+    }
+  }
+}
+
