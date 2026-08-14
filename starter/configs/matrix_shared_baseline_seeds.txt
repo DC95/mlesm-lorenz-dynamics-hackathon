@@ -1,0 +1,5 @@
+# config seed output_directory
+configs/train_a0_direct_onestep.json 41 runs/a0_direct_onestep_seed41
+configs/train_a0_direct_onestep.json 42 runs/a0_direct_onestep_seed42
+configs/train_a0_direct_onestep.json 43 runs/a0_direct_onestep_seed43
+configs/train_linear.json 42 runs/linear_seed42
