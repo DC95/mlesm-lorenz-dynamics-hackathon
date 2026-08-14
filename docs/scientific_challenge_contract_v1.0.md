@@ -4,7 +4,7 @@
 **Pitch hook:** *Same One-Step Error. Different Dynamics.*  
 **Subtitle:** *Lorenz-63 as a controlled testbed for AI emulators*  
 **Status:** Final scientific scope; numerical settings pending JURECA rehearsal  
-**Supersedes:** `scientific_challenge_contract_v0.2.md`  
+**Supersedes:** Earlier organizer drafts  
 **Public release:** 18 August 2026  
 **Hackathon start:** 19 August 2026  
 **Format:** Approximately 2.5 days; 6–8 participants in two teams of 3–4  

@@ -1,8 +1,12 @@
-# MLESM Hackathon Challenge: Scientific Benchmark Specification
+# MLESM Hackathon Challenge: Scientific Benchmark Specification v0.1
 
-**Working title:** *When Is an AI Weather Model Dynamically Trustworthy?*  
+> [!CAUTION]
+> **Superseded organizer implementation draft.** This document predates the lean scientific contract v1.0 and contains an earlier title, broader experiments, and provisional diagnostics. It must not be used as the participant brief or as the current authority for scientific scope. Use [`scientific_challenge_contract_v1.0.md`](scientific_challenge_contract_v1.0.md) for the finalized challenge design. The numerical values in this file remain candidates until the complete workflow is rehearsed on JURECA and replaced by a frozen implementation specification.
+
+**Historical working title (superseded):** *When Is an AI Weather Model Dynamically Trustworthy?*  
 **Subtitle:** *Lorenz as a wind tunnel for prediction, chaos, climate stability, and regime change*  
-**Status:** Organizer draft v0.1  
+**Status:** Superseded organizer implementation draft  
+**Current scientific authority:** [`scientific_challenge_contract_v1.0.md`](scientific_challenge_contract_v1.0.md)  
 **Expected participation:** 6-8 participants in two teams of 3-4  
 **Challenge duration:** Approximately 2.5 days
 

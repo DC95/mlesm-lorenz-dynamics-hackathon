@@ -1,55 +1,93 @@
-# Organizer roadmap
+# Organizer Roadmap
 
-This page separates existing source material, current proposals, and work that is still required. It is the quickest way to understand the state of the project.
+**Current state:** Scientific scope frozen; implementation alignment pending  
+**Public release:** 18 August 2026  
+**Hackathon start:** 19 August 2026
 
-## What already existed
+This page records what is complete, what remains provisional, and the order in which the repository should be developed.
 
-The `original_materials/` directory contains:
+## 1. Document authority
 
-1. the earlier tutorial-led Lorenz workshop notebook; and
-2. the original Bonn hackathon challenge description.
+| Document | Role | Status |
+|---|---|---|
+| [`scientific_challenge_contract_v1.0.md`](scientific_challenge_contract_v1.0.md) | Scientific question, lean team scope, evidence categories, and required outputs | **Current authority** |
+| [`lorenz63_primer.md`](lorenz63_primer.md) | Participant introduction to Lorenz-63 and its connection to the experiments | **Complete** |
+| [`benchmark_spec_v0.1.md`](benchmark_spec_v0.1.md) | Earlier numerical and implementation proposal | **Superseded draft; retain temporarily for implementation history** |
+| [`../starter/README.md`](../starter/README.md) | Commands and implementation overview | **Provisional; not yet aligned with contract v1.0** |
+| [`../original_materials/`](../original_materials/) | Earlier challenge brief and teaching notebook | **Preserved source material** |
 
-These files are source material. They have not been edited.
+If documents disagree about scientific scope, the contract v1.0 takes precedence.
 
-## What v0.1 adds
+## 2. Progress
 
-The benchmark specification proposes four changes to the earlier teaching workflow:
+| Stage | Status | Evidence or remaining gate |
+|---|---|---|
+| Preserve original materials | Complete | Original PDF and notebook are unchanged. |
+| Freeze the scientific direction | Complete | Contract v1.0 defines the lean shared baseline and one intervention per team. |
+| Introduce Lorenz-63 | Complete | The 10–15-minute participant primer is available. |
+| Build the numerical foundation | Preliminary | RK4 integration, trajectory-disjoint data generation, and numerical smoke tests exist. |
+| Build the ML foundation | Preliminary | Direct, residual, conditioned, one-step, and multi-step mechanisms exist, but the experiment configurations predate v1.0. |
+| Build the evaluation foundation | Preliminary | Forecast, stability, perturbation, distribution, and lobe diagnostics exist but have not completed an end-to-end JURECA rehearsal. |
+| Align mandatory experiments | **Next** | Create clean A0/A1 and B1/B2 comparisons with only the intended variable changed. |
+| Rehearse on JURECA | Pending | Complete data generation, training, evaluation, plotting, and runtime measurement. |
+| Freeze the benchmark | Pending | Fix numerical values, datasets, checksums, seeds, stability thresholds, and runtime budget. |
+| Prepare participant release | Pending | Final commands, team pages, schedule, result templates, licence, and clean-account test. |
+| Create team branches and publish | Pending | Branch from the frozen release and make the repository public. |
 
-1. use trajectory-disjoint training, validation, and test splits;
-2. compare neural models against persistence and linear baselines;
-3. evaluate dynamics beyond one-step MSE; and
-4. separate failure under a changed system from genuine parameter-conditioned generalization.
+## 3. Mandatory configuration alignment
 
-The `starter/` directory is a preliminary implementation of those proposals. Its existence does not mean every scientific choice is final.
+The current starter configurations reflect an earlier, broader design. They must be replaced by the following controlled comparisons before JURECA results are interpreted.
 
-## Decisions to review with the organizer
+### Team A
 
-- Final challenge title and central pitch.
-- Whether the exposed ML forecast interval should remain `0.05`.
-- Final trajectory counts and runtime budget.
-- Public and hidden values of the Lorenz parameter `rho`.
-- Exact mandatory diagnostics and optional extensions.
-- Whether teams are assigned or choose between the two investigations.
-- What code and results remain hidden until the event.
-- Final judging criteria and weights.
+| Model | Architecture and target | Loss |
+|---|---|---|
+| A0 | Direct next-state MLP | One-step MSE |
+| A1 | The same direct next-state MLP | Closed-loop multi-step rollout MSE |
 
-## Build sequence
+Residual prediction remains optional and must not be mixed into the mandatory comparison.
 
-1. Review and freeze the scientific benchmark.
-2. Rehearse data generation, training, and evaluation on JURECA.
-3. Simplify the starter code based on the rehearsal.
-4. Create frozen public datasets and checksums.
-5. Write the participant-facing one-page challenge brief.
-6. Create the opening pitch and 2.5-day schedule.
-7. Prepare the experiment ledger, submission template, and judging sheet.
-8. Run a complete organizer rehearsal from a clean account.
+### Team B
 
-## Release states
+| Model | Training data | Input | Target and loss |
+|---|---|---|---|
+| B1 | Identical multi-$\rho$ data | State only | Common direct target and common loss |
+| B2 | Identical multi-$\rho$ data | State plus $\rho$ | The same direct target and loss |
 
-| State | Meaning |
+Conditioning must be the only intended difference between B1 and B2.
+
+## 4. Numerical settings to freeze through rehearsal
+
+- exposed ML forecast interval;
+- internal RK4 time step and tolerances;
+- trajectory counts and stored lengths;
+- Team A rollout-loss horizon;
+- Team B training, interpolation, and extrapolation values of $\rho$;
+- long-run evaluation length and discarded initial period;
+- stability thresholds;
+- number of training seeds; and
+- GPU, memory, and wall-time budget.
+
+These settings must be fixed before teams see final test results.
+
+## 5. Build sequence from here
+
+1. Align A0/A1 and B1/B2 configurations and seed matrices.
+2. Run numerical and PyTorch tests in the shared JURECA environment.
+3. Generate the standard and multi-$\rho$ datasets.
+4. Train and evaluate all four mandatory configurations.
+5. Inspect the four-panel model autopsies and record runtime and failure modes.
+6. Simplify the code and commands based on the rehearsal.
+7. Freeze datasets and publish checksums.
+8. Write the participant team pages, schedule, experiment ledger, and presentation template.
+9. Run the entire workflow from a clean participant-like account.
+10. Merge the frozen release, create team branches, select the licence, and make the repository public.
+
+## 6. Release gates
+
+| Release state | Gate |
 |---|---|
-| Organizer draft | Contains design discussion and provisional code. Current state. |
-| Rehearsal candidate | Scientific choices frozen; full JURECA workflow ready to test. |
-| Participant release | Only participant-facing instructions, starter code, and public data are exposed. |
-| Event archive | Final presentations, winning conclusions, and reproducible results are preserved. |
-
+| **Organizer draft — current** | Scientific scope is frozen, but code and numerical settings remain provisional. |
+| **Rehearsal candidate** | Mandatory configurations match v1.0 and the full JURECA workflow can run. |
+| **Participant release** | Data, commands, timing, documentation, and licence are frozen and verified from a clean account. |
+| **Event archive** | Team branches, configurations, presentations, conclusions, and reproducible results are preserved. |
