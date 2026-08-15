@@ -22,6 +22,12 @@ class EnvironmentContractTests(unittest.TestCase):
         self.assertIn('${starter_dir}/src', activation)
         self.assertIn('export HACKATHON_ACTIVATE="${script_dir}/activate.sh"', activation)
 
+    def test_fresh_activation_defines_per_user_run_root(self):
+        config = (ENVIRONMENT_ROOT / "config.sh").read_text(encoding="utf-8")
+
+        self.assertIn("HACKATHON_RUN_ROOT", config)
+        self.assertIn("/p/scratch/training2635/${USER}/mlesm-lorenz-hackathon-2026", config)
+
     def test_shared_environment_does_not_install_one_team_branch(self):
         setup = (ENVIRONMENT_ROOT / "setup.sh").read_text(encoding="utf-8")
 

@@ -66,9 +66,9 @@ Team A will compare two models with the same architecture, data, normalization, 
 | Model | Training objective |
 |---|---|
 | A0 | Direct next-state prediction with one-step MSE |
-| A1 | Direct next-state prediction with closed-loop multi-step rollout loss |
+| A1 | Direct next-state prediction with closed-loop four-step rollout loss |
 
-For A1, each predicted state is fed back as the input to the next training step. The multi-step horizon will be selected during the JURECA rehearsal.
+For A1, each predicted state is fed back as the input to the next training step. The frozen rollout horizon is four model steps, corresponding to 0.20 Lorenz time units at the benchmark interval of 0.05.
 
 The organizer will aim to obtain models with sufficiently similar one-step validation skill to make the rollout comparison meaningful. Exact equality is not a participant requirement; any remaining one-step difference must be reported.
 

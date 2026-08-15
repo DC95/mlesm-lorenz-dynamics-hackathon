@@ -16,7 +16,7 @@
     "batch_size": 512,
     "learning_rate": 0.001,
     "weight_decay": 0.0,
-    "rollout_steps": 8,
+    "rollout_steps": 4,
     "num_workers": 0
   }
 }

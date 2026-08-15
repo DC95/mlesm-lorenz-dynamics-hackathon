@@ -6,3 +6,4 @@
 export HACKATHON_ENV_NAME="${HACKATHON_ENV_NAME:-lorenz-hackathon-2026}"
 export HACKATHON_SHARED_ROOT="${HACKATHON_SHARED_ROOT:-/p/project1/training2635/mlesm-lorenz-hackathon-2026}"
 export HACKATHON_ENV_DIR="${HACKATHON_SHARED_ROOT}/env"
+export HACKATHON_RUN_ROOT="${HACKATHON_RUN_ROOT:-/p/scratch/training2635/${USER}/mlesm-lorenz-hackathon-2026}"

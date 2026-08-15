@@ -46,7 +46,7 @@ class ConfigurationContractTests(unittest.TestCase):
         a1_horizon = a1_training.pop("rollout_steps")
         self.assertEqual(a0_training, a1_training)
         self.assertEqual(a0_horizon, 1)
-        self.assertGreater(a1_horizon, 1)
+        self.assertEqual(a1_horizon, 4)
 
     def test_team_b_changes_only_rho_conditioning(self) -> None:
         b1 = load_config("train_b1_multirho_state_only.json")

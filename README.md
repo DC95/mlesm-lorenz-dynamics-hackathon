@@ -47,7 +47,7 @@ Both teams first reproduce the same numerical reference, persistence and linear 
 
 | Team | Primary question | Mandatory controlled comparison |
 |---|---|---|
-| **A: Rollout fidelity** | Does training through several autoregressive steps improve rollout fidelity, and what does it sacrifice? | Direct next-state MLP with one-step loss versus the same model with closed-loop multi-step loss |
+| **A: Rollout fidelity** | Does training through several autoregressive steps improve rollout fidelity, and what does it sacrifice? | Direct next-state MLP with one-step loss versus the same model with closed-loop four-step loss |
 | **B: Changing dynamics** | Is exposure to multiple regimes sufficient, or must the governing parameter be supplied explicitly? | State-only versus state-plus-$\rho$ models trained on identical multi-$\rho$ data |
 
 The challenge is not an architecture competition. Each team must complete its mandatory comparison before attempting optional extensions.

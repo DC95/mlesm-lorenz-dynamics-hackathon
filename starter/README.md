@@ -6,7 +6,7 @@ The organizer supplies a high-accuracy RK4 reference, frozen trajectory-disjoint
 
 | Comparison | Fixed | Intended difference |
 |---|---|---|
-| Team A: A0 vs A1 | Data, normalization, direct MLP, optimizer, seeds | One-step loss vs closed-loop multi-step loss |
+| Team A: A0 vs A1 | Data, normalization, direct MLP, optimizer, seeds | One-step loss vs closed-loop four-step loss |
 | Team B: B1 vs B2 | Multi-`rho` data, normalization, direct MLP, one-step loss, optimizer, seeds | State only vs state plus `rho` |
 
 Numerical values remain provisional until the complete workflow has been rehearsed on JURECA.
@@ -59,7 +59,7 @@ Persistence requires no training. It is evaluated as a no-change rollout at ever
 ## 4. Run the mandatory comparisons
 
 ```bash
-# Team A: A0 one-step vs A1 multi-step, matched seeds 41–43
+# Team A: A0 one-step vs A1 four-step, matched seeds 41–43
 bash scripts/train_matrix_worker.sh configs/matrix_team_a_seeds.txt
 
 # Team B: B1 state-only vs B2 state-plus-rho, matched seeds 41–43

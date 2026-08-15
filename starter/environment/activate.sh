@@ -38,3 +38,4 @@ export HACKATHON_ACTIVATE="${script_dir}/activate.sh"
 
 echo "Activated ${HACKATHON_ENV_NAME}"
 echo "Python source: ${starter_dir}/src"
+echo "Run root: ${HACKATHON_RUN_ROOT}"
