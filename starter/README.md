@@ -6,10 +6,20 @@ The organizer supplies a high-accuracy RK4 reference, frozen trajectory-disjoint
 
 | Comparison | Fixed | Intended difference |
 |---|---|---|
-| Team A: A0 vs A1 | Data, normalization, direct MLP, optimizer, seeds | One-step loss vs closed-loop four-step loss |
+| Team A: A0 vs A1 | Data, normalization, direct MLP, optimizer settings, epochs, seeds | One-step loss vs closed-loop four-step loss |
 | Team B: B1 vs B2 | Multi-`rho` data, normalization, direct MLP, one-step loss, optimizer, seeds | State only vs state plus `rho` |
 
-Numerical values remain provisional until the complete workflow has been rehearsed on JURECA.
+The complete workflow has been rehearsed on JURECA-DC. Numerical settings and
+dataset hashes are frozen in
+[`../docs/frozen_benchmark_v1.0.md`](../docs/frozen_benchmark_v1.0.md); metric
+definitions and interpretation are in the
+[`evaluation evidence guide`](../docs/evaluation_evidence_guide.md).
+
+Team-specific instructions are in the
+[Team A](../docs/team_a_rollout_fidelity.md) and
+[Team B](../docs/team_b_changing_dynamics.md) guides. Use the shared
+[experiment and reporting templates](../docs/templates/) from the beginning of
+the investigation.
 
 ## 1. Environment and tests
 
@@ -28,17 +38,18 @@ environment shares pinned dependencies while resolving `lorenz_hackathon` from
 the current team's checkout and branch. See
 [JURECA_QUICKSTART.md](JURECA_QUICKSTART.md).
 
-## 2. Generate the two frozen datasets
+## 2. Link and verify the frozen datasets and run directory
 
 ```bash
-python -m lorenz_hackathon.data \
-  --config configs/benchmark_standard.json \
-  --output data/standard_benchmark.npz
+test -e data || ln -s "$HACKATHON_SHARED_ROOT/data" data
+mkdir -p "$HACKATHON_RUN_ROOT/runs"
+test -e runs || ln -s "$HACKATHON_RUN_ROOT/runs" runs
 
-python -m lorenz_hackathon.data \
-  --config configs/benchmark_multirho.json \
-  --output data/multirho_benchmark.npz
+sha256sum -c data/SHA256SUMS
 ```
+
+Participants use the shared frozen copies. Dataset regeneration is an
+organizer reproducibility operation, not a participant step.
 
 The standard dataset uses `rho = 28` for trajectory-disjoint training, validation, and test splits. The multi-`rho` dataset uses `rho = 26, 28, 32` for training and validation, with different trajectories in each split, and `rho = 24, 30` for the public changed-dynamics test.
 
@@ -87,7 +98,7 @@ bash scripts/evaluate_matrix.sh \
 bash scripts/evaluate_matrix.sh \
   configs/matrix_team_b_seeds.txt \
   data/multirho_benchmark.npz \
-  changed_dynamics
+  multirho_unseen_rho24_30
 
 # Team B in-distribution reference at rho=28
 bash scripts/evaluate_matrix.sh \
@@ -98,8 +109,14 @@ bash scripts/evaluate_matrix.sh \
 
 Each checkpoint receives an evaluation directory containing:
 
-- `benchmark_results.json`, including one-step error, learned and persistence rollout error, stability, perturbation growth, and long-term statistics;
+- `benchmark_results.json`, including checkpoint and dataset hashes, frozen
+  evaluation settings, sample counts, one-step error, learned and persistence
+  rollout error, stability, perturbation growth, and long-term statistics;
 - one four-panel `model_autopsy_rho_*.png` for every test value of `rho`.
+
+Non-finite predictions are recorded as failures rather than silently omitted.
+If any long emulator rollout is non-finite, its model climate metrics are
+reported as `null`; finite and bounded fractions remain available.
 
 ## 6. Reproducibility rules
 
@@ -111,3 +128,7 @@ Each checkpoint receives an evaluation directory containing:
 - Evaluate each mandatory neural configuration at seeds 41, 42, and 43.
 - Preserve failed or inconclusive experiments in the experiment ledger.
 - Change only the intended variable in the mandatory comparison; use the configuration-consistency tests to detect accidental confounders.
+- Report seeds 41–43 individually and summarize them with the population
+  standard deviation (`ddof=0`).
+- Interpret the complete diagnostic set; finiteness and boundedness alone are
+  weak evidence of dynamical fidelity.

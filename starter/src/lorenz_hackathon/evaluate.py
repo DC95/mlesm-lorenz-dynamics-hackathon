@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,23 @@ from .baselines import persistence_rollout
 from .dynamics import LorenzParameters, integrate_lorenz
 from .models import FlowModel, build_model
 from .train import select_device
+
+
+FORECAST_STEPS = 200
+LONG_TRAJECTORY_COUNT = 32
+LONG_ROLLOUT_STEPS = 4000
+EVALUATION_BURN_STEPS = 400
+PERTURBATION_TRAJECTORY_COUNT = 64
+PERTURBATION_STEPS = 200
+USEFUL_HORIZON_THRESHOLD = 1.0
+REFERENCE_BOUND_QUANTILE = 0.999
+REFERENCE_BOUND_MULTIPLIER = 5.0
+PERTURBATION_RELATIVE_INITIAL_DISTANCE = 1e-5
+GROWTH_FIT_LOWER_MULTIPLIER = 5.0
+GROWTH_FIT_UPPER_STD_NORM_FRACTION = 0.1
+WASSERSTEIN_QUANTILE_COUNT = 999
+WASSERSTEIN_QUANTILE_MIN = 0.001
+WASSERSTEIN_QUANTILE_MAX = 0.999
 
 
 def model_step(
@@ -60,7 +78,11 @@ def rollout_model(
 
 
 def quantile_wasserstein(reference: np.ndarray, prediction: np.ndarray) -> float:
-    quantiles = np.linspace(0.001, 0.999, 999)
+    quantiles = np.linspace(
+        WASSERSTEIN_QUANTILE_MIN,
+        WASSERSTEIN_QUANTILE_MAX,
+        WASSERSTEIN_QUANTILE_COUNT,
+    )
     return float(
         np.mean(
             np.abs(
@@ -89,7 +111,9 @@ def mean_residence_time(trajectories: np.ndarray, delta_t: float) -> float:
 
 
 def first_threshold_time(values: np.ndarray, threshold: float, delta_t: float) -> float | None:
-    indices = np.flatnonzero(values >= threshold)
+    # A non-finite forecast is a failure at that lead, not evidence that the
+    # threshold was never crossed.
+    indices = np.flatnonzero((~np.isfinite(values)) | (values >= threshold))
     return None if len(indices) == 0 else float(indices[0] * delta_t)
 
 
@@ -99,9 +123,13 @@ def effective_growth_rate(
     initial_distance: float,
     state_std: np.ndarray,
 ) -> float | None:
-    lower = max(initial_distance * 5.0, 1e-12)
-    upper = 0.1 * float(np.linalg.norm(state_std))
-    mask = (median_distance >= lower) & (median_distance <= upper)
+    lower = max(initial_distance * GROWTH_FIT_LOWER_MULTIPLIER, 1e-12)
+    upper = GROWTH_FIT_UPPER_STD_NORM_FRACTION * float(np.linalg.norm(state_std))
+    mask = (
+        np.isfinite(median_distance)
+        & (median_distance >= lower)
+        & (median_distance <= upper)
+    )
     if np.count_nonzero(mask) < 3:
         return None
     slope, _ = np.polyfit(times[mask], np.log(median_distance[mask]), 1)
@@ -110,6 +138,53 @@ def effective_growth_rate(
 
 def finite_or_none(value: float) -> float | None:
     return float(value) if np.isfinite(value) else None
+
+
+def finite_vector_or_none(values: np.ndarray) -> list[float | None]:
+    return [finite_or_none(value) for value in np.asarray(values).ravel()]
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def evaluation_settings(long_steps: int, perturbation_steps: int) -> dict[str, Any]:
+    return {
+        "forecast_steps": FORECAST_STEPS,
+        "long_trajectory_count": LONG_TRAJECTORY_COUNT,
+        "long_steps": int(long_steps),
+        "evaluation_burn_steps": min(EVALUATION_BURN_STEPS, long_steps // 5),
+        "perturbation_trajectory_count": PERTURBATION_TRAJECTORY_COUNT,
+        "perturbation_steps": int(perturbation_steps),
+        "useful_horizon_nrmse_threshold": USEFUL_HORIZON_THRESHOLD,
+        "reference_bound_quantile": REFERENCE_BOUND_QUANTILE,
+        "reference_bound_multiplier": REFERENCE_BOUND_MULTIPLIER,
+        "perturbation_relative_initial_distance": (
+            PERTURBATION_RELATIVE_INITIAL_DISTANCE
+        ),
+        "growth_fit_lower_initial_distance_multiplier": (
+            GROWTH_FIT_LOWER_MULTIPLIER
+        ),
+        "growth_fit_upper_state_std_norm_fraction": (
+            GROWTH_FIT_UPPER_STD_NORM_FRACTION
+        ),
+        "wasserstein_quantile_count": WASSERSTEIN_QUANTILE_COUNT,
+        "wasserstein_quantile_range": [
+            WASSERSTEIN_QUANTILE_MIN,
+            WASSERSTEIN_QUANTILE_MAX,
+        ],
+        "nonfinite_forecast_policy": (
+            "the first non-finite lead counts as useful-horizon failure"
+        ),
+        "climate_statistics_policy": (
+            "model climate metrics are reported only when every long rollout "
+            "is finite; otherwise they are null"
+        ),
+    }
 
 
 def evaluate_rho_group(
@@ -129,7 +204,7 @@ def evaluate_rho_group(
     dt_reference = float(reference["dt_reference"])
     state_std = np.asarray(checkpoint["state_std"], dtype=np.float64)
 
-    forecast_steps = min(200, states.shape[1] - 1)
+    forecast_steps = min(FORECAST_STEPS, states.shape[1] - 1)
     forecast_truth = states[:, : forecast_steps + 1].astype(np.float64)
     forecast_model = rollout_model(
         model,
@@ -140,7 +215,14 @@ def evaluate_rho_group(
         device,
     )
     normalized_error = (forecast_model - forecast_truth) / state_std
-    nrmse_by_lead = np.sqrt(np.nanmean(normalized_error**2, axis=(0, 2)))
+    with np.errstate(over="ignore", invalid="ignore"):
+        nrmse_by_lead = np.sqrt(np.mean(normalized_error**2, axis=(0, 2)))
+    forecast_finite_by_trajectory_and_lead = np.all(
+        np.isfinite(forecast_model), axis=2
+    )
+    forecast_finite_fraction_by_lead = np.mean(
+        forecast_finite_by_trajectory_and_lead, axis=0
+    )
     forecast_persistence = persistence_rollout(
         forecast_truth[:, 0], forecast_steps
     )
@@ -148,7 +230,7 @@ def evaluate_rho_group(
         forecast_persistence - forecast_truth
     ) / state_std
     persistence_nrmse_by_lead = np.sqrt(
-        np.nanmean(persistence_normalized_error**2, axis=(0, 2))
+        np.mean(persistence_normalized_error**2, axis=(0, 2))
     )
 
     one_step_inputs = states[:, :-1].reshape(-1, 3).astype(np.float64)
@@ -157,10 +239,19 @@ def evaluate_rho_group(
     one_step_prediction = model_step(
         model, one_step_inputs, repeated_parameters, checkpoint, device
     )
+    one_step_finite = np.all(np.isfinite(one_step_prediction), axis=1)
+    all_one_step_finite = bool(np.all(one_step_finite))
     persistence_error = one_step_inputs - one_step_targets
     model_error = one_step_prediction - one_step_targets
 
-    long_count = min(32, len(states))
+    if all_one_step_finite:
+        one_step_rmse = np.sqrt(np.mean(model_error**2, axis=0))
+        one_step_nrmse = float(np.sqrt(np.mean((model_error / state_std) ** 2)))
+    else:
+        one_step_rmse = np.full(3, np.nan)
+        one_step_nrmse = None
+
+    long_count = min(LONG_TRAJECTORY_COUNT, len(states))
     long_initial = states[:long_count, 0].astype(np.float64)
     long_parameters = parameters[:long_count].astype(np.float64)
     lorenz_parameters = LorenzParameters(
@@ -183,21 +274,35 @@ def evaluate_rho_group(
         checkpoint,
         device,
     )
-    evaluation_burn = min(400, long_steps // 5)
+    evaluation_burn = min(EVALUATION_BURN_STEPS, long_steps // 5)
     reference_climate = long_reference[:, evaluation_burn:]
-    model_climate = long_model[:, evaluation_burn:]
+    model_climate_all = long_model[:, evaluation_burn:]
 
     reference_radius = np.linalg.norm(reference_climate, axis=-1)
-    broad_bound = 5.0 * float(np.quantile(reference_radius, 0.999))
+    broad_bound = REFERENCE_BOUND_MULTIPLIER * float(
+        np.quantile(reference_radius, REFERENCE_BOUND_QUANTILE)
+    )
     finite_trajectories = np.all(np.isfinite(long_model), axis=(1, 2))
-    within_bound = np.all(np.linalg.norm(long_model, axis=-1) <= broad_bound, axis=1)
+    with np.errstate(over="ignore", invalid="ignore"):
+        within_bound = finite_trajectories & np.all(
+            np.linalg.norm(long_model, axis=-1) <= broad_bound,
+            axis=1,
+        )
+    has_finite_climate = bool(np.all(finite_trajectories))
+    model_climate = (
+        model_climate_all
+        if has_finite_climate
+        else np.empty((0, model_climate_all.shape[1], 3), dtype=np.float64)
+    )
 
-    perturb_count = min(64, len(states))
+    perturb_count = min(PERTURBATION_TRAJECTORY_COUNT, len(states))
     perturb_initial = states[:perturb_count, 0].astype(np.float64)
     rng = np.random.default_rng(7717 + int(round(rho * 10)))
     directions = rng.normal(size=perturb_initial.shape)
     directions /= np.linalg.norm(directions, axis=1, keepdims=True)
-    epsilon = 1e-5 * float(np.linalg.norm(state_std))
+    epsilon = PERTURBATION_RELATIVE_INITIAL_DISTANCE * float(
+        np.linalg.norm(state_std)
+    )
     perturbed_initial = perturb_initial + epsilon * directions
     perturb_parameters = parameters[:perturb_count].astype(np.float64)
 
@@ -234,40 +339,77 @@ def evaluate_rho_group(
     reference_distance = np.linalg.norm(reference_a - reference_b, axis=-1)
     model_distance = np.linalg.norm(model_a - model_b, axis=-1)
     median_reference_distance = np.median(reference_distance, axis=0)
-    median_model_distance = np.median(model_distance, axis=0)
+    perturbation_finite_fraction_by_lead = np.mean(
+        np.isfinite(model_distance), axis=0
+    )
+    with np.errstate(invalid="ignore"):
+        median_model_distance = np.median(model_distance, axis=0)
+    median_model_distance[
+        perturbation_finite_fraction_by_lead < 1.0
+    ] = np.nan
     perturbation_times = np.arange(perturbation_steps + 1) * delta_t
 
     variable_names = ("x", "y", "z")
-    wasserstein = {
-        name: quantile_wasserstein(
-            reference_climate[..., index].ravel(),
-            model_climate[..., index].ravel(),
-        )
-        for index, name in enumerate(variable_names)
-    }
     reference_variance = np.var(reference_climate, axis=(0, 1))
-    model_variance = np.var(model_climate, axis=(0, 1))
-
+    if has_finite_climate:
+        wasserstein = {
+            name: quantile_wasserstein(
+                reference_climate[..., index].ravel(),
+                model_climate[..., index].ravel(),
+            )
+            for index, name in enumerate(variable_names)
+        }
+        model_variance = np.var(model_climate, axis=(0, 1))
+        variance_ratio = model_variance / np.maximum(reference_variance, 1e-12)
+        model_mean = np.mean(model_climate, axis=(0, 1))
+        model_std = np.std(model_climate, axis=(0, 1))
+        model_positive_x_fraction = float(np.mean(model_climate[..., 0] >= 0.0))
+        model_switch_rate = switch_rate(model_climate, delta_t)
+        model_mean_residence_time = mean_residence_time(model_climate, delta_t)
+    else:
+        wasserstein = {name: None for name in variable_names}
+        variance_ratio = np.full(3, np.nan)
+        model_mean = np.full(3, np.nan)
+        model_std = np.full(3, np.nan)
+        model_positive_x_fraction = None
+        model_switch_rate = None
+        model_mean_residence_time = None
     result = {
         "rho": float(rho),
+        "delta_t": delta_t,
+        "dt_reference": dt_reference,
+        "sample_counts": {
+            "one_step_transitions": int(len(one_step_inputs)),
+            "forecast_trajectories": int(len(states)),
+            "forecast_steps": int(forecast_steps),
+            "long_trajectories": int(long_count),
+            "long_steps": int(long_steps),
+            "evaluation_burn_steps": int(evaluation_burn),
+            "perturbation_pairs": int(perturb_count),
+            "perturbation_steps": int(perturbation_steps),
+        },
         "one_step": {
-            "rmse_by_variable": np.sqrt(np.mean(model_error**2, axis=0)).tolist(),
-            "nrmse": float(np.sqrt(np.mean((model_error / state_std) ** 2))),
+            "rmse_by_variable": finite_vector_or_none(one_step_rmse),
+            "nrmse": one_step_nrmse,
+            "finite_prediction_fraction": float(np.mean(one_step_finite)),
             "persistence_nrmse": float(
                 np.sqrt(np.mean((persistence_error / state_std) ** 2))
             ),
         },
         "forecast": {
             "useful_horizon_nrmse_1": first_threshold_time(
-                nrmse_by_lead, 1.0, delta_t
+                nrmse_by_lead, USEFUL_HORIZON_THRESHOLD, delta_t
             ),
             "persistence_useful_horizon_nrmse_1": first_threshold_time(
-                persistence_nrmse_by_lead, 1.0, delta_t
+                persistence_nrmse_by_lead, USEFUL_HORIZON_THRESHOLD, delta_t
             ),
             "nrmse_by_lead": [finite_or_none(value) for value in nrmse_by_lead],
             "persistence_nrmse_by_lead": [
                 finite_or_none(value) for value in persistence_nrmse_by_lead
             ],
+            "finite_trajectory_fraction_by_lead": (
+                forecast_finite_fraction_by_lead.tolist()
+            ),
         },
         "stability": {
             "finite_trajectory_fraction": float(np.mean(finite_trajectories)),
@@ -275,7 +417,7 @@ def evaluate_rho_group(
             "reference_bound": broad_bound,
             "variance_ratio": [
                 finite_or_none(value)
-                for value in model_variance / np.maximum(reference_variance, 1e-12)
+                for value in variance_ratio
             ],
         },
         "perturbation": {
@@ -292,23 +434,33 @@ def evaluate_rho_group(
                 epsilon,
                 state_std,
             ),
+            "times": perturbation_times.tolist(),
+            "reference_median_distance": finite_vector_or_none(
+                median_reference_distance
+            ),
+            "model_median_distance": finite_vector_or_none(
+                median_model_distance
+            ),
+            "model_finite_pair_fraction_by_lead": (
+                perturbation_finite_fraction_by_lead.tolist()
+            ),
         },
         "climate": {
             "reference_mean": np.mean(reference_climate, axis=(0, 1)).tolist(),
-            "model_mean": np.mean(model_climate, axis=(0, 1)).tolist(),
+            "model_mean": finite_vector_or_none(model_mean),
             "reference_std": np.std(reference_climate, axis=(0, 1)).tolist(),
-            "model_std": np.std(model_climate, axis=(0, 1)).tolist(),
+            "model_std": finite_vector_or_none(model_std),
             "wasserstein_by_variable": wasserstein,
             "reference_positive_x_fraction": float(
                 np.mean(reference_climate[..., 0] >= 0.0)
             ),
-            "model_positive_x_fraction": float(np.mean(model_climate[..., 0] >= 0.0)),
+            "model_positive_x_fraction": model_positive_x_fraction,
             "reference_switch_rate": switch_rate(reference_climate, delta_t),
-            "model_switch_rate": switch_rate(model_climate, delta_t),
+            "model_switch_rate": model_switch_rate,
             "reference_mean_residence_time": mean_residence_time(
                 reference_climate, delta_t
             ),
-            "model_mean_residence_time": mean_residence_time(model_climate, delta_t),
+            "model_mean_residence_time": model_mean_residence_time,
         },
     }
 
@@ -321,7 +473,12 @@ def evaluate_rho_group(
         label="Persistence",
         linestyle=":",
     )
-    axes[0, 0].axhline(1.0, color="black", linestyle="--", linewidth=1)
+    axes[0, 0].axhline(
+        USEFUL_HORIZON_THRESHOLD,
+        color="black",
+        linestyle="--",
+        linewidth=1,
+    )
     axes[0, 0].set(xlabel="Lead time", ylabel="Normalized RMSE", title="Forecast skill")
     axes[0, 0].grid(alpha=0.3)
     axes[0, 0].legend()
@@ -332,13 +489,23 @@ def evaluate_rho_group(
         linewidth=0.7,
         label="RK4",
     )
-    axes[0, 1].plot(
-        model_climate[0, :, 0],
-        model_climate[0, :, 2],
-        linewidth=0.7,
-        alpha=0.8,
-        label="Emulator",
-    )
+    if has_finite_climate:
+        axes[0, 1].plot(
+            model_climate[0, :, 0],
+            model_climate[0, :, 2],
+            linewidth=0.7,
+            alpha=0.8,
+            label="Emulator",
+        )
+    else:
+        axes[0, 1].text(
+            0.5,
+            0.5,
+            "No fully finite emulator trajectory",
+            ha="center",
+            va="center",
+            transform=axes[0, 1].transAxes,
+        )
     axes[0, 1].set(xlabel="x", ylabel="z", title="Long-term phase space")
     axes[0, 1].legend()
 
@@ -354,15 +521,28 @@ def evaluate_rho_group(
     axes[1, 0].grid(alpha=0.3)
     axes[1, 0].legend()
 
-    common_min = min(reference_climate[..., 0].min(), model_climate[..., 0].min())
-    common_max = max(reference_climate[..., 0].max(), model_climate[..., 0].max())
+    if has_finite_climate:
+        common_min = min(
+            reference_climate[..., 0].min(), model_climate[..., 0].min()
+        )
+        common_max = max(
+            reference_climate[..., 0].max(), model_climate[..., 0].max()
+        )
+    else:
+        common_min = float(reference_climate[..., 0].min())
+        common_max = float(reference_climate[..., 0].max())
     bins = np.linspace(common_min, common_max, 60)
     axes[1, 1].hist(
         reference_climate[..., 0].ravel(), bins=bins, density=True, alpha=0.5, label="RK4"
     )
-    axes[1, 1].hist(
-        model_climate[..., 0].ravel(), bins=bins, density=True, alpha=0.5, label="Emulator"
-    )
+    if has_finite_climate:
+        axes[1, 1].hist(
+            model_climate[..., 0].ravel(),
+            bins=bins,
+            density=True,
+            alpha=0.5,
+            label="Emulator",
+        )
     axes[1, 1].set(xlabel="x", ylabel="Density", title="Long-term state distribution")
     axes[1, 1].legend()
     figure.suptitle(f"Lorenz emulator model autopsy: rho={rho:g}")
@@ -410,9 +590,12 @@ def evaluate(
 
     results = {
         "checkpoint": str(checkpoint_path),
+        "checkpoint_sha256": sha256_file(checkpoint_path),
         "data": str(data_path),
+        "data_sha256": sha256_file(data_path),
         "best_epoch": int(checkpoint["best_epoch"]),
         "best_validation_loss": float(checkpoint["best_validation_loss"]),
+        "evaluation_settings": evaluation_settings(long_steps, perturbation_steps),
         "by_rho": by_rho,
     }
     with (output_dir / "benchmark_results.json").open("w", encoding="utf-8") as handle:
@@ -427,9 +610,13 @@ def main() -> None:
     parser.add_argument("--data", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--long-steps", type=int, default=4000)
-    parser.add_argument("--perturbation-steps", type=int, default=200)
+    parser.add_argument("--long-steps", type=int, default=LONG_ROLLOUT_STEPS)
+    parser.add_argument("--perturbation-steps", type=int, default=PERTURBATION_STEPS)
     args = parser.parse_args()
+    if args.long_steps < 1:
+        parser.error("--long-steps must be positive")
+    if args.perturbation_steps < 1:
+        parser.error("--perturbation-steps must be positive")
     evaluate(
         checkpoint_path=args.checkpoint,
         data_path=args.data,

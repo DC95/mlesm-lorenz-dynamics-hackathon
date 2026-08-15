@@ -10,7 +10,9 @@ The challenge therefore asks:
 
 > **What evidence supports the claim that an AI emulator has learned the underlying dynamics rather than only an accurate one-step mapping?**
 
-The repository is currently an **organizer preparation branch**, not the frozen participant release.
+The scientific and numerical benchmark has been rehearsed on JURECA-DC. The
+repository contains participant-facing definitions and reproducible workflows;
+private organizer rehearsal results are not part of the release.
 
 ## How the pieces connect
 
@@ -34,12 +36,20 @@ The original workshop introduced the path from the Lorenz equations to a neural 
 |---|---|
 | Lorenz-63, its physical meaning, chaos, and AI emulation | [`docs/lorenz63_primer.md`](docs/lorenz63_primer.md) |
 | The finalized scientific question, team scope, and required outputs | [`docs/scientific_challenge_contract_v1.0.md`](docs/scientific_challenge_contract_v1.0.md) |
+| The exact datasets, training settings, checksums, and evaluation settings | [`docs/frozen_benchmark_v1.0.md`](docs/frozen_benchmark_v1.0.md) |
+| What every diagnostic means and why it is evidence | [`docs/evaluation_evidence_guide.md`](docs/evaluation_evidence_guide.md) |
+| Team A's mandatory comparison and commands | [`docs/team_a_rollout_fidelity.md`](docs/team_a_rollout_fidelity.md) |
+| Team B's mandatory comparison and commands | [`docs/team_b_changing_dynamics.md`](docs/team_b_changing_dynamics.md) |
+| The 2.5-day workflow and scientific gates | [`docs/participant_schedule.md`](docs/participant_schedule.md) |
+| The experiment, result, and presentation templates | [`docs/templates/`](docs/templates/) |
 | What is complete and what must happen before release | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
-| The provisional implementation and commands | [`starter/README.md`](starter/README.md) |
-| The proposed JURECA workflow | [`starter/JURECA_QUICKSTART.md`](starter/JURECA_QUICKSTART.md) |
+| The implementation and commands | [`starter/README.md`](starter/README.md) |
+| The rehearsed JURECA workflow | [`starter/JURECA_QUICKSTART.md`](starter/JURECA_QUICKSTART.md) |
 | The earlier challenge brief and teaching notebook | [`original_materials/`](original_materials/) |
 
-The scientific contract v1.0 is the authority for the challenge scope. The older benchmark v0.1 is retained temporarily as a provisional implementation draft and must not override the contract.
+The scientific contract v1.0 is the authority for scope. Frozen Benchmark
+v1.0 is the authority for numerical settings. The older benchmark v0.1 is only
+a historical pointer and must not override either document.
 
 ## Lean two-team investigation
 
@@ -57,20 +67,21 @@ The challenge is not an architecture competition. Each team must complete its ma
 The shared evaluation harness examines:
 
 - one-step error and forecast error versus lead time;
-- rollout stability and attractor behaviour;
-- long-term state distributions;
-- perturbation growth for Team A; and
-- response to changed $\rho$ for Team B.
+- numerical finiteness, broad boundedness, and long-term variance;
+- perturbation-growth curves and finite-time effective growth rates;
+- long-term state distributions, lobe occupancy, switching, and residence;
+- in-distribution, interpolation, and extrapolation response across $\rho$.
 
-There is no single overall model score.
+The [evaluation evidence guide](docs/evaluation_evidence_guide.md) defines every
+quantity and its limitations. There is no single overall model score.
 
 ## Repository structure
 
 ```text
 .
 ├── original_materials/       # Unchanged challenge PDF and teaching notebook
-├── docs/                     # Scientific contract, primer, and organizer roadmap
-└── starter/                  # Provisional code, configurations, tests, and Slurm jobs
+├── docs/                     # Contract, frozen benchmark, team guides, and templates
+└── starter/                  # Code, configurations, tests, and Slurm jobs
     ├── configs/              # Data and training experiment definitions
     ├── src/                  # Lorenz data, models, training, and evaluation
     ├── tests/                # Smoke tests and controlled-comparison contract tests
@@ -78,24 +89,17 @@ There is no single overall model score.
     └── slurm/                # JURECA job scripts
 ```
 
-## Current status
+## Release status
 
-Completed:
+The complete data, training, and evaluation workflow has been rehearsed on
+JURECA-DC. Numerical settings, dataset checksums, Team A's four-step horizon,
+Team B's parameter regimes, and evaluator failure policies are frozen. The
+remaining release gate is a clean participant-like checkout rehearsal,
+tracked in the [organizer roadmap](docs/ROADMAP.md).
 
-- scientific challenge contract v1.0;
-- participant-facing Lorenz-63 primer;
-- original-material preservation;
-- clean A0/A1 and B1/B2 configurations with matched three-seed matrices;
-- persistence, linear, and neural rollout evaluation through one common harness; and
-- RK4, data, model, training, test, and Slurm infrastructure.
+## License
 
-Still required before the public release on **18 August 2026**:
-
-1. rehearse the complete workflow on JURECA;
-2. freeze numerical settings, datasets, checksums, and runtime limits;
-3. simplify and verify participant commands;
-4. select an open-source licence;
-5. complete the participant schedule and result templates; and
-6. run a clean-account organizer rehearsal.
-
-The immediate next technical step is the **first complete JURECA rehearsal**.
+This repository is licensed under the
+[Apache License 2.0](LICENSE). The licence applies to the entire repository,
+including the preserved PDF and notebook in [`original_materials/`](original_materials/).
+See [`NOTICE`](NOTICE) for attribution information.
