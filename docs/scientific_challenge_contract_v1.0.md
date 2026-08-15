@@ -1,13 +1,13 @@
 # Scientific Challenge Contract v1.0
 
-**Title:** *Beyond Predictive Skill: What Evidence Supports Claims of Learned Dynamics?*  
-**Pitch hook:** *Same One-Step Error. Different Dynamics.*  
-**Subtitle:** *Lorenz-63 as a controlled testbed for AI emulators*  
-**Status:** Final scientific scope; numerical settings pending JURECA rehearsal  
-**Supersedes:** Earlier organizer drafts  
-**Public release:** 18 August 2026  
-**Hackathon start:** 19 August 2026  
-**Format:** Approximately 2.5 days; 6–8 participants in two teams of 3–4  
+**Title:** *Beyond Predictive Skill: What Evidence Supports Claims of Learned Dynamics?*
+**Pitch hook:** *Same One-Step Error. Different Dynamics.*
+**Subtitle:** *Lorenz-63 as a controlled testbed for AI emulators*
+**Status:** Final scientific scope and frozen numerical benchmark
+**Supersedes:** Earlier organizer drafts
+**Public release:** 18 August 2026
+**Hackathon start:** 19 August 2026
+**Format:** Approximately 2.5 days; 6–8 participants in two teams of 3–4
 **Mentoring:** One challenge mentor
 
 ## 1. Central question
@@ -61,14 +61,20 @@ Does training through several autoregressive steps improve rollout fidelity, and
 
 ### Mandatory comparison
 
-Team A will compare two models with the same architecture, data, normalization, and approximate training effort:
+Team A will compare two models with the same architecture, data,
+normalization, optimizer settings, epoch count and matched seeds. The intended
+configuration difference is the closed-loop loss horizon:
 
 | Model | Training objective |
 |---|---|
 | A0 | Direct next-state prediction with one-step MSE |
 | A1 | Direct next-state prediction with closed-loop four-step rollout loss |
 
-For A1, each predicted state is fed back as the input to the next training step. The frozen rollout horizon is four model steps, corresponding to 0.20 Lorenz time units at the benchmark interval of 0.05.
+For A1, each predicted state is fed back as the input to the next training
+step. The frozen horizon is four model steps, corresponding to 0.20 Lorenz
+time units at the benchmark interval of 0.05. This is not an equal-compute
+comparison: A1 performs four model evaluations per training window and
+backpropagates through the unroll.
 
 The organizer will aim to obtain models with sufficiently similar one-step validation skill to make the rollout comparison meaningful. Exact equality is not a participant requirement; any remaining one-step difference must be reported.
 
@@ -99,14 +105,21 @@ The shared state-only model trained at `rho = 28` provides the single-regime ref
 
 B1 controls for the benefit of seeing more diverse data. B2 tests whether explicit parameter conditioning allows the model to distinguish systems that can have different tendencies at the same state.
 
+B2 adds normalized `rho` as one input to the first layer. This small increase
+in parameter count is disclosed as part of the intervention; no other
+configuration difference is intended.
+
 ### Required tests
 
-Team B will use:
+Team B trains at `rho = 26, 28, 32` and is evaluated at:
 
-- one interpolation value of `rho`, provisionally `rho = 30`; and
-- one extrapolation or regime-transition value, provisionally `rho = 24`.
+- `rho = 28`, an in-distribution control using independent test trajectories;
+- `rho = 30`, unseen interpolation within the training range; and
+- `rho = 24`, out-of-range extrapolation across changed dynamics.
 
-The evaluation harness will provide sufficiently long reference rollouts and a common burn-in so that transient behaviour near the transition is not mistaken for the final regime. Exact training and test values will be confirmed during the JURECA rehearsal.
+The evaluation harness provides 200-Lorenz-time-unit reference and emulator
+rollouts with a common 20-time-unit evaluation burn-in. Interpolation and
+extrapolation are separate claims and must be reported separately.
 
 ### Required conclusion
 
@@ -134,6 +147,9 @@ Each team will produce:
 6. one principal scientific conclusion;
 7. the strongest limitation of that conclusion; and
 8. one 15-minute final presentation.
+
+Participant-ready formats are provided in the shared
+[experiment ledger, result-table and presentation templates](templates/).
 
 There will be no single overall model score. A well-supported negative result is more valuable than a small error improvement without a dynamical interpretation.
 
@@ -163,17 +179,19 @@ The two teams are scientifically complementary but operationally independent. Te
 
 The challenge succeeds if both teams reproduce the baseline, complete their mandatory comparison, and produce an interesting, defensible conclusion that distinguishes predictive skill from stronger evidence of dynamical fidelity. The resulting repository should remain reusable for future courses and scientific extensions.
 
-The code will use an open-source licence; the exact licence will be selected before public release.
+The complete repository, including code, documentation and preserved original
+workshop materials, is released under the Apache License 2.0.
 
-## 9. Numerical settings still to freeze
+## 9. Frozen numerical implementation
 
-The following are deliberately deferred until a complete rehearsal on JURECA using account `training2635`:
+The complete workflow was rehearsed on JURECA-DC before participant release.
+The exposed interval, trajectory counts, rollout lengths, Team A loss horizon,
+Team B parameter values, stability screens, failure policies, seeds and dataset
+checksums are frozen in
+[Frozen Benchmark v1.0](frozen_benchmark_v1.0.md). Diagnostic definitions and
+interpretation limits are given in the
+[Evaluation Evidence Guide](evaluation_evidence_guide.md).
 
-- the exposed ML forecast interval;
-- final trajectory counts and rollout lengths;
-- the multi-step training horizon;
-- exact training and test values of `rho`;
-- numerical stability thresholds; and
-- the final GPU and runtime budget.
-
-These values must be fixed before the public release on 18 August 2026 and must not be changed after teams inspect the final test results.
+These settings must not be changed after teams inspect the released test
+results. Extensions must use new configuration and output names and must be
+reported separately from the mandatory comparisons.

@@ -1,6 +1,6 @@
 # Lorenz-63: From Thermal Convection to an AI Emulator
 
-**Reading time:** 10–15 minutes  
+**Reading time:** 10–15 minutes
 **What you need to learn:** what the three variables represent, why the system is chaotic, what the two-lobed attractor means, and why accurate one-step prediction is not enough.
 
 ## 1. The physical picture

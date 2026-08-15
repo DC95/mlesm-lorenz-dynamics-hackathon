@@ -4,6 +4,11 @@ This page records the JURECA software stack rehearsed for the August 2026
 event. The versions are pinned in `environment/modules.sh`; update and rehearse
 that file before reusing the challenge on a later JSC software stage.
 
+Read the assigned [Team A](../docs/team_a_rollout_fidelity.md) or
+[Team B](../docs/team_b_changing_dynamics.md) guide before launching the
+mandatory matrix. Record every job in the
+[experiment ledger](../docs/templates/experiment_ledger.md).
+
 Official system documentation:
 
 - Batch system: <https://apps.fz-juelich.de/jsc/hps/jureca/batchsystem.html>
@@ -37,6 +42,8 @@ Participants and the organizer activate from their own checkout:
 ```bash
 cd starter
 source environment/activate.sh
+export HACKATHON_ACCOUNT=training2635
+umask 0027
 ```
 
 Activation exports `HACKATHON_ACTIVATE` for the supplied Slurm scripts and
@@ -44,6 +51,23 @@ prepends the current checkout's `src` directory to `PYTHONPATH`. Team branches
 therefore share dependencies without sharing source code. Do not install
 packages inside production jobs; the `dc-gpu` production partition does not
 provide internet access.
+
+Create checkout-local links to shared immutable data and per-user scratch
+outputs once:
+
+```bash
+mkdir -p "$HACKATHON_RUN_ROOT/runs" "$HACKATHON_RUN_ROOT/slurm"
+
+if [[ ! -e data && ! -L data ]]; then
+    ln -s "$HACKATHON_SHARED_ROOT/data" data
+fi
+
+if [[ ! -e runs && ! -L runs ]]; then
+    ln -s "$HACKATHON_RUN_ROOT/runs" runs
+fi
+
+sha256sum -c data/SHA256SUMS
+```
 
 ## 2. Smoke test
 
@@ -56,23 +80,27 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 
 Repeat the CUDA check in a short development allocation. Use the project account supplied by the organizers.
 
-## 3. Generate and freeze the datasets
+## 3. Organizer-only dataset regeneration
+
+Participants must use the shared, checksum-verified datasets above. The
+following commands are retained only to reproduce a new organizer release:
 
 ```bash
 mkdir -p data
 
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/generate_data.sbatch \
   configs/benchmark_standard.json \
   data/standard_benchmark.npz
 
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/generate_data.sbatch \
   configs/benchmark_multirho.json \
   data/multirho_benchmark.npz
 ```
 
-The organizer must generate, inspect, and checksum both released datasets. Participants should use the shared frozen copies instead of regenerating them.
+The organizer must generate, inspect, and checksum both released datasets
+before replacing the shared copies.
 
 ## 4. Train matched seed matrices on four GPUs
 
@@ -80,17 +108,17 @@ JURECA-DC GPU nodes contain four A100 GPUs and node allocations are exclusive. T
 
 ```bash
 # Shared A0 baseline at three seeds plus the linear reference
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/train_matrix.sbatch \
   configs/matrix_shared_baseline_seeds.txt
 
 # Team A mandatory comparison: six experiments
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/train_matrix.sbatch \
   configs/matrix_team_a_seeds.txt
 
 # Team B mandatory comparison: six experiments
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/train_matrix.sbatch \
   configs/matrix_team_b_seeds.txt
 ```
@@ -107,35 +135,40 @@ Create a new matrix for extensions. Do not silently edit a frozen organizer matr
 
 ```bash
 # Shared persistence, linear, and direct-MLP baselines at rho=28
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_shared_baseline_seeds.txt \
   data/standard_benchmark.npz \
   standard_rho28
 
 # Team A at rho=28
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_a_seeds.txt \
   data/standard_benchmark.npz \
   standard_rho28
 
 # Team B on rho=24 and rho=30
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_b_seeds.txt \
   data/multirho_benchmark.npz \
-  changed_dynamics
+  multirho_unseen_rho24_30
 
 # Team B in-distribution check at rho=28
-sbatch --account=PROJECT_ACCOUNT \
+sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_b_seeds.txt \
   data/standard_benchmark.npz \
   in_distribution_rho28
 ```
 
-The current development-job wall time is provisional. If the complete matrix evaluation exceeds it, use a rehearsed production allocation rather than shortening the scientific diagnostics during the event.
+The supplied Slurm limits and evaluation lengths are the rehearsed settings.
+Do not shorten scientific diagnostics to make a job finish sooner; report any
+scheduler or infrastructure failure to the organizer.
+
+Metric meanings, failure policies, and the minimum reporting standard are in
+the [evaluation evidence guide](../docs/evaluation_evidence_guide.md).
 
 The single-checkpoint `slurm/evaluate.sbatch` remains available for debugging.
 
