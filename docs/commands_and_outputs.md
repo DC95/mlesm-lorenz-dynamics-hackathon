@@ -1,0 +1,299 @@
+# Participant Commands and Outputs
+
+This is the shortest operational path from a fresh JURECA login to trained
+models, evaluation artifacts, and figures. Read the assigned
+[Team A](team_a_rollout_fidelity.md) or
+[Team B](team_b_changing_dynamics.md) guide for the scientific question and
+the [evaluation evidence guide](evaluation_evidence_guide.md) before
+interpreting results.
+
+## 1. Start from a fresh JURECA login
+
+Activate the hackathon project and clone the public repository over HTTPS:
+
+```bash
+jutil env activate -p training2635
+
+echo "$PROJECT"
+echo "$SCRATCH"
+
+mkdir -p "$PROJECT/$USER"
+cd "$PROJECT/$USER"
+
+git clone https://github.com/DC95/mlesm-lorenz-dynamics-hackathon.git
+cd mlesm-lorenz-dynamics-hackathon
+```
+
+Switch to the branch assigned by the organizer:
+
+```bash
+# Team A
+git switch team-a-rollout-fidelity
+
+# Team B: use this instead of the preceding command
+git switch team-b-changing-dynamics
+```
+
+All remaining commands are run from `starter/`:
+
+```bash
+cd starter
+source environment/activate.sh
+export HACKATHON_ACCOUNT=training2635
+umask 0027
+```
+
+Activation uses the shared, organizer-prepared Python environment but imports
+`lorenz_hackathon` from the current checkout. Team branches therefore share
+dependencies without sharing source code.
+
+## 2. Run the login-node preflight
+
+```bash
+bash scripts/preflight_login.sh
+```
+
+This creates the per-user output directories and `data`/`runs` links, verifies
+the released dataset checksums, runs the unit tests, and confirms that the
+scratch output directory is writable. Do not continue if it fails. Report the
+exact failing command and its output to the organizer.
+
+## 3. Confirm access to one GPU
+
+Submit the ten-minute preflight job and remember its job ID:
+
+```bash
+preflight_job=$(sbatch --parsable \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-preflight \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-preflight-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-preflight-%j.err" \
+    slurm/preflight.sbatch)
+
+echo "GPU preflight job: $preflight_job"
+squeue -j "$preflight_job"
+```
+
+When the job leaves the queue, inspect its state and output:
+
+```bash
+sacct -j "$preflight_job" --format=JobID,JobName,State,Elapsed,ExitCode
+cat "$HACKATHON_RUN_ROOT/slurm/lorenz-preflight-${preflight_job}.out"
+```
+
+Continue only when the job prints `GPU preflight passed` and its Slurm state is
+`COMPLETED` with exit code `0:0`. The test constructs the A0 model and performs
+one CUDA forward/backward pass. `torch.cuda.is_available()` may be false on a
+login node; this batch-job result is the check that matters.
+
+## 4. Understand the matrix files
+
+Every non-comment row has three fields:
+
+```text
+TRAIN_CONFIG SEED OUTPUT_DIRECTORY
+```
+
+| File | Meaning |
+|---|---|
+| `configs/matrix_shared_baseline_seeds.txt` | A0 at seeds 41--43 and one linear model at seed 42 |
+| `configs/matrix_team_a_a1_only_seeds.txt` | A1 at seeds 41--43, used after the shared baseline has produced A0 |
+| `configs/matrix_team_a_seeds.txt` | Complete A0/A1 manifest used for Team A evaluation and comparison |
+| `configs/matrix_team_b_seeds.txt` | Complete B1/B2 training and evaluation manifest |
+
+Persistence is evaluated directly and does not require a checkpoint.
+
+## 5. Train the shared baseline
+
+Both teams first submit the same shared baseline:
+
+```bash
+baseline_job=$(sbatch --parsable \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-baseline \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-baseline-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-baseline-%j.err" \
+    slurm/train_matrix.sbatch \
+    configs/matrix_shared_baseline_seeds.txt)
+
+echo "Shared baseline job: $baseline_job"
+```
+
+## 6. Train the assigned team comparison
+
+Team A trains only A1 here because the shared baseline has already produced
+the three A0 checkpoints:
+
+```bash
+team_job=$(sbatch --parsable \
+    --dependency="afterok:$baseline_job" \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-team-a \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-%j.err" \
+    slurm/train_matrix.sbatch \
+    configs/matrix_team_a_a1_only_seeds.txt)
+
+echo "Team A job: $team_job"
+```
+
+Team B uses this command instead:
+
+```bash
+team_job=$(sbatch --parsable \
+    --dependency="afterok:$baseline_job" \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-team-b \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-%j.err" \
+    slurm/train_matrix.sbatch \
+    configs/matrix_team_b_seeds.txt)
+
+echo "Team B job: $team_job"
+```
+
+`afterok` prevents the team job from starting if the shared baseline fails.
+
+## 7. Monitor jobs and logs
+
+```bash
+squeue -j "$baseline_job"
+squeue -j "$team_job"
+
+sacct -j "$team_job" \
+    --format=JobID,JobName,State,Elapsed,ExitCode
+
+tail -f "$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-${team_job}.out"
+```
+
+Team B should replace `team-a` with `team-b` in the log filename. Press
+`Ctrl-C` to stop following a log. Cancel a job only when necessary:
+
+```bash
+scancel "$team_job"
+```
+
+Do not submit evaluation until the training job state is `COMPLETED` with
+exit code `0:0`.
+
+## 8. Evaluate the shared baseline
+
+The final argument is an output label, not a physical parameter. It becomes
+part of the evaluation directory name.
+
+```bash
+baseline_eval_job=$(sbatch --parsable \
+    --dependency="afterok:$baseline_job" \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-baseline-eval \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-baseline-eval-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-baseline-eval-%j.err" \
+    slurm/evaluate_matrix.sbatch \
+    configs/matrix_shared_baseline_seeds.txt \
+    data/standard_benchmark.npz \
+    shared_baseline_rho28)
+
+echo "Shared baseline evaluation job: $baseline_eval_job"
+```
+
+## 9. Evaluate the assigned comparison
+
+Team A:
+
+```bash
+team_eval_job=$(sbatch --parsable \
+    --dependency="afterok:$team_job" \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-team-a-eval \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-eval-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-eval-%j.err" \
+    slurm/evaluate_matrix.sbatch \
+    configs/matrix_team_a_seeds.txt \
+    data/standard_benchmark.npz \
+    team_a_rho28)
+
+echo "Team A evaluation job: $team_eval_job"
+```
+
+Team B requires separate changed-dynamics and in-distribution evaluations:
+
+```bash
+team_eval_unseen_job=$(sbatch --parsable \
+    --dependency="afterok:$team_job" \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-team-b-unseen \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-unseen-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-unseen-%j.err" \
+    slurm/evaluate_matrix.sbatch \
+    configs/matrix_team_b_seeds.txt \
+    data/multirho_benchmark.npz \
+    multirho_unseen_rho24_30)
+
+team_eval_rho28_job=$(sbatch --parsable \
+    --dependency="afterok:$team_job" \
+    --account="$HACKATHON_ACCOUNT" \
+    --job-name=lorenz-team-b-rho28 \
+    --chdir="$(pwd)" \
+    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-rho28-%j.out" \
+    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-rho28-%j.err" \
+    slurm/evaluate_matrix.sbatch \
+    configs/matrix_team_b_seeds.txt \
+    data/standard_benchmark.npz \
+    in_distribution_rho28)
+
+echo "Team B unseen-rho evaluation job: $team_eval_unseen_job"
+echo "Team B rho=28 evaluation job: $team_eval_rho28_job"
+```
+
+## 10. Find and interpret outputs
+
+Each trained experiment contains:
+
+```text
+runs/<experiment>/
+├── best_checkpoint.pt
+├── history.json
+├── resolved_config.json
+└── evaluation/<evaluation-label>/
+    ├── benchmark_results.json
+    └── model_autopsy_rho_*.png
+```
+
+List all generated result files and figures with:
+
+```bash
+find runs -type f \
+    \( -name 'benchmark_results.json' -o -name 'model_autopsy_rho_*.png' \) \
+    -print | sort
+```
+
+`benchmark_results.json` contains the complete numerical evaluation and
+provenance hashes. `model_autopsy_rho_*.png` contains forecast skill,
+long-term phase-space behaviour, perturbation growth, and an x-distribution
+comparison for one checkpoint. The current evaluator produces one autopsy per
+checkpoint; the next repository task is to add automatic matrix-level A0/A1
+and B1/B2 comparison figures.
+
+## 11. Common failures
+
+| Symptom | Meaning and action |
+|---|---|
+| `Shared environment not found` | The organizer has not created the shared environment or it is not readable by the project group. |
+| `Permission denied` under the shared root | Stop and report the exact path; do not copy the shared environment. |
+| Dataset checksum failure | Stop. Do not regenerate or modify participant datasets. |
+| `CUDA available: False` on a login node | Expected; use the GPU preflight batch-job result. |
+| `Missing checkpoint` during evaluation | Training did not complete successfully or the wrong matrix was supplied. |
+| Slurm job state `DEPENDENCY` | The job is waiting for the job named in `--dependency`. |
+| Slurm job state `DependencyNeverSatisfied` | An upstream job failed; inspect its log and submit a corrected job chain. |
+| Non-finite evaluation metrics | Preserve the result. It is model evidence, not automatically an infrastructure failure. |
+
+For scheduler or environment failures, preserve the job ID and log and report
+them to the organizer. Do not count infrastructure failures as scientific
+experiments.

@@ -19,7 +19,8 @@ Team-specific instructions are in the
 [Team A](../docs/team_a_rollout_fidelity.md) and
 [Team B](../docs/team_b_changing_dynamics.md) guides. Use the shared
 [experiment and reporting templates](../docs/templates/) from the beginning of
-the investigation.
+the investigation. Participants starting from a fresh JURECA login should use
+the copy-paste [command and output reference](../docs/commands_and_outputs.md).
 
 ## 1. Environment and tests
 
@@ -70,8 +71,8 @@ Persistence requires no training. It is evaluated as a no-change rollout at ever
 ## 4. Run the mandatory comparisons
 
 ```bash
-# Team A: A0 one-step vs A1 four-step, matched seeds 41–43
-bash scripts/train_matrix_worker.sh configs/matrix_team_a_seeds.txt
+# Team A after the shared baseline: train A1 at matched seeds 41–43
+bash scripts/train_matrix_worker.sh configs/matrix_team_a_a1_only_seeds.txt
 
 # Team B: B1 state-only vs B2 state-plus-rho, matched seeds 41–43
 bash scripts/train_matrix_worker.sh configs/matrix_team_b_seeds.txt
@@ -86,13 +87,13 @@ On a four-task JURECA job, a worker processes another row after its first experi
 bash scripts/evaluate_matrix.sh \
   configs/matrix_shared_baseline_seeds.txt \
   data/standard_benchmark.npz \
-  standard_rho28
+  shared_baseline_rho28
 
 # Team A at rho=28
 bash scripts/evaluate_matrix.sh \
   configs/matrix_team_a_seeds.txt \
   data/standard_benchmark.npz \
-  standard_rho28
+  team_a_rho28
 
 # Team B on unseen parameter values
 bash scripts/evaluate_matrix.sh \

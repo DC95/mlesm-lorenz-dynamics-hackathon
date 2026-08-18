@@ -118,6 +118,21 @@ class ConfigurationContractTests(unittest.TestCase):
         self.assertEqual(seeds_by_config["configs/train_linear.json"], {42})
         self.assertEqual(len(rows), 4)
 
+    def test_team_a_continuation_does_not_retrain_shared_a0(self) -> None:
+        rows = load_matrix("matrix_team_a_a1_only_seeds.txt")
+
+        self.assertEqual(
+            rows,
+            [
+                (
+                    "configs/train_a1_direct_multistep.json",
+                    seed,
+                    f"runs/a1_direct_multistep_seed{seed}",
+                )
+                for seed in (41, 42, 43)
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
