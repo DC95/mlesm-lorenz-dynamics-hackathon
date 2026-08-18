@@ -46,7 +46,7 @@ test -e data || ln -s "$HACKATHON_SHARED_ROOT/data" data
 mkdir -p "$HACKATHON_RUN_ROOT/runs"
 test -e runs || ln -s "$HACKATHON_RUN_ROOT/runs" runs
 
-sha256sum -c data/SHA256SUMS
+(cd data && sha256sum -c SHA256SUMS)
 ```
 
 Participants use the shared frozen copies. Dataset regeneration is an

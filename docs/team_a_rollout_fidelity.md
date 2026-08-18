@@ -36,7 +36,7 @@ would contradict it.
 From the activated `starter/` directory:
 
 ```bash
-sha256sum -c data/SHA256SUMS
+(cd data && sha256sum -c SHA256SUMS)
 ```
 
 First reproduce the shared baseline as described in the

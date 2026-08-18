@@ -41,7 +41,8 @@ class EnvironmentContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("sha256sum -c data/SHA256SUMS", preflight)
+        self.assertIn("(cd data && sha256sum -c SHA256SUMS)", preflight)
+        self.assertNotIn("sha256sum -c data/SHA256SUMS", preflight)
         self.assertIn("python -m unittest discover -s tests -v", preflight)
         self.assertIn('touch "${test_file}"', preflight)
         self.assertIn("HACKATHON_RUN_ROOT", preflight)

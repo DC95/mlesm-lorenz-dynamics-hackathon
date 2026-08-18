@@ -68,7 +68,7 @@ if [[ ! -e runs && ! -L runs ]]; then
     ln -s "$HACKATHON_RUN_ROOT/runs" runs
 fi
 
-sha256sum -c data/SHA256SUMS
+(cd data && sha256sum -c SHA256SUMS)
 ```
 
 ## 2. Smoke test
