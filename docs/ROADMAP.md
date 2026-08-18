@@ -1,6 +1,6 @@
 # Organizer Roadmap
 
-**Current state:** JURECA rehearsal complete; participant release hardening in progress
+**Current state:** Participant release validated and ready for the event
 **Public release:** 18 August 2026
 **Hackathon start:** 19 August 2026
 
@@ -35,8 +35,9 @@ takes precedence.
 | Align mandatory experiments | Complete | Contract tests enforce that A0/A1 change only rollout horizon and B1/B2 change only `rho` conditioning. |
 | Rehearse on JURECA | Complete | Data generation, training, evaluation, plotting and artifact preservation completed. |
 | Freeze the benchmark | Complete | Frozen Benchmark v1.0 records settings and dataset hashes. |
-| Prepare participant release | **In progress** | Team guides, schedule, templates and Apache-2.0 licence are complete; clean-account test remains. |
-| Create team branches and publish | Pending | Branch from the frozen release and make the repository public. |
+| Prepare participant release | Complete | A fresh public HTTPS clone passed both dataset checksums, all 22 tests, scratch isolation, and the GPU preflight on JURECA. |
+| Create team branches and publish | Complete | The public Team A and Team B branches start from the same frozen release commit. |
+| Automate matrix-level comparison figures | Complete | Every matrix evaluation produces per-`rho` forecast and ten-diagnostic matched-seed figures plus a JSON summary. |
 
 ## 3. Mandatory configuration alignment
 
@@ -67,11 +68,12 @@ loss horizon, Team B parameter values, long-run evaluation, stability screens,
 non-finite policies, seeds and dataset hashes are fixed in
 [Frozen Benchmark v1.0](frozen_benchmark_v1.0.md).
 
-## 5. Remaining release sequence
+## 5. Event-start sequence
 
-1. Run the participant commands from a clean participant-like checkout.
-2. Review the public tree for organizer-only results or paths.
-3. Commit the release hardening, create team branches and publish the release.
+1. Assign each participant the appropriate team branch.
+2. Ask participants to run the documented login-node preflight before training.
+3. Record Slurm job IDs, hypotheses, failures, and results in the supplied
+   experiment ledger from the beginning.
 
 ## 6. Release gates
 
@@ -79,6 +81,6 @@ non-finite policies, seeds and dataset hashes are fixed in
 |---|---|
 | **Organizer draft** | Scientific scope is frozen, but code and numerical settings remain provisional. |
 | **Rehearsal candidate** | Mandatory configurations match v1.0 and the full JURECA workflow can run. |
-| **Release candidate — current** | Rehearsal and numerical freeze are complete; participant packaging is being finalized. |
-| **Participant release** | Data, commands, timing, documentation and licence are frozen and verified from a clean account. |
+| **Release candidate** | Rehearsal and numerical freeze are complete; participant packaging is being finalized. |
+| **Participant release — current** | Data, commands, timing, documentation and licence are frozen and verified from a fresh public clone. |
 | **Event archive** | Team branches, configurations, presentations, conclusions, and reproducible results are preserved. |

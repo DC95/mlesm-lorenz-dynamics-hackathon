@@ -24,13 +24,23 @@ fi
 
 source "${HACKATHON_ENV_DIR}/bin/activate"
 
-# Resolve imports from this checkout, not from the organizer's checkout or an
-# editable install stored in the shared environment. This preserves branch
-# isolation for the two teams.
-case ":${PYTHONPATH:-}:" in
-    *":${starter_dir}/src:"*) ;;
-    *) export PYTHONPATH="${starter_dir}/src${PYTHONPATH:+:${PYTHONPATH}}" ;;
-esac
+# Resolve imports from this checkout, not from another participant checkout or
+# an editable install stored in the shared environment. The current checkout
+# must be first even when its path already appears later in PYTHONPATH after a
+# user switches between clones or branches in the same shell.
+pythonpath_entries=()
+if [[ -n "${PYTHONPATH:-}" ]]; then
+    IFS=: read -r -a pythonpath_entries <<< "${PYTHONPATH}"
+fi
+new_pythonpath="${starter_dir}/src"
+for entry in "${pythonpath_entries[@]}"; do
+    if [[ -z "${entry}" || "${entry}" == "${starter_dir}/src" ]]; then
+        continue
+    fi
+    new_pythonpath="${new_pythonpath}:${entry}"
+done
+export PYTHONPATH="${new_pythonpath}"
+unset entry new_pythonpath pythonpath_entries
 
 # Use a non-interactive backend inside Slurm jobs.
 export MPLBACKEND="${MPLBACKEND:-Agg}"

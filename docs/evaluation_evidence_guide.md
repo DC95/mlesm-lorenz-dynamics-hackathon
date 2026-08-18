@@ -88,6 +88,25 @@ long-term phase-space projection, perturbation growth, and an `x`-distribution
 comparison. The plot is diagnostic evidence, not a substitute for ensemble
 statistics.
 
+## Automatic matrix-level figures
+
+After the last checkpoint in an evaluation matrix, the workflow automatically
+aggregates the matched seeds. For every evaluated `rho` it writes:
+
+- a forecast figure with individual seed curves, the model mean and population
+  standard deviation, persistence, and the frozen NRMSE threshold; and
+- a ten-panel diagnostic figure with matched-seed lines, seed values, means,
+  and population standard deviations for one-step NRMSE, useful horizon,
+  finite and bounded fractions, growth-rate error, variance-ratio error, lobe
+  occupancy error, switching error, residence-time error, and mean
+  Wasserstein distance.
+
+The figures are generated from the complete matrix, never from a selected best
+seed. An open useful-horizon triangle means the threshold was not crossed
+within the evaluation window. Missing dynamical metrics remain missing and
+are counted in `matrix_summary.json`; they are not silently replaced by zero.
+The dashboard is a visual comparison, not an overall model ranking.
+
 ## Team-specific reasoning
 
 ### Team A: one-step versus four-step training

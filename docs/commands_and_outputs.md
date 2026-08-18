@@ -264,22 +264,33 @@ runs/<experiment>/
 └── evaluation/<evaluation-label>/
     ├── benchmark_results.json
     └── model_autopsy_rho_*.png
+
+runs/matrix_comparisons/<matrix-name>/<evaluation-label>/
+├── matrix_summary.json
+├── forecast_comparison_rho_*.png
+└── metric_comparison_rho_*.png
 ```
 
 List all generated result files and figures with:
 
 ```bash
 find runs -type f \
-    \( -name 'benchmark_results.json' -o -name 'model_autopsy_rho_*.png' \) \
+    \( -name 'benchmark_results.json' \
+       -o -name 'matrix_summary.json' \
+       -o -name 'model_autopsy_rho_*.png' \
+       -o -name 'forecast_comparison_rho_*.png' \
+       -o -name 'metric_comparison_rho_*.png' \) \
     -print | sort
 ```
 
 `benchmark_results.json` contains the complete numerical evaluation and
 provenance hashes. `model_autopsy_rho_*.png` contains forecast skill,
 long-term phase-space behaviour, perturbation growth, and an x-distribution
-comparison for one checkpoint. The current evaluator produces one autopsy per
-checkpoint; the next repository task is to add automatic matrix-level A0/A1
-and B1/B2 comparison figures.
+comparison for one checkpoint. After the final row, the evaluation command
+automatically produces matrix-level forecast and matched-seed diagnostic
+figures. `matrix_summary.json` records the per-seed values, population
+statistics, missing and censored counts, metric directions, and paired changes
+used in those figures.
 
 ## 11. Common failures
 

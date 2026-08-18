@@ -21,7 +21,9 @@ class EnvironmentContractTests(unittest.TestCase):
         activation = (ENVIRONMENT_ROOT / "activate.sh").read_text(encoding="utf-8")
 
         self.assertIn('starter_dir=$(cd -- "${script_dir}/.." && pwd)', activation)
-        self.assertIn('${starter_dir}/src', activation)
+        self.assertIn('new_pythonpath="${starter_dir}/src"', activation)
+        self.assertIn('export PYTHONPATH="${new_pythonpath}"', activation)
+        self.assertNotIn('case ":${PYTHONPATH:-}:"', activation)
         self.assertIn('export HACKATHON_ACTIVATE="${script_dir}/activate.sh"', activation)
 
     def test_fresh_activation_defines_per_user_run_root(self):

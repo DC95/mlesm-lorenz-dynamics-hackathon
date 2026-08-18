@@ -76,6 +76,11 @@ The resulting evidence must be separated into:
 - `rho=30`: unseen interpolation within the training range; and
 - `rho=24`: out-of-range extrapolation across changed dynamics.
 
+Each evaluation job automatically creates separate B1/B2 matched-seed figures
+for every `rho` in that dataset under
+`runs/matrix_comparisons/matrix_team_b_seeds/<evaluation-label>/`, together
+with a machine-readable `matrix_summary.json`.
+
 ## Evidence checklist
 
 For B1 and B2 at each `rho`, compare:

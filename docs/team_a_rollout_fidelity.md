@@ -75,6 +75,10 @@ team_a_eval_job=$(sbatch --parsable \
 echo "Team A evaluation job: $team_a_eval_job"
 ```
 
+This job automatically creates the A0/A1 matched-seed forecast and diagnostic
+figures, together with `matrix_summary.json`, under
+`runs/matrix_comparisons/matrix_team_a_seeds/team_a_rho28/`.
+
 ## Evidence checklist
 
 Compare A0 and A1 at every matched seed, then summarize seeds with the

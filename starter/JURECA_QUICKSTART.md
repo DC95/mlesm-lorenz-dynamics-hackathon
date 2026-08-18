@@ -172,6 +172,11 @@ scheduler or infrastructure failure to the organizer.
 Metric meanings, failure policies, and the minimum reporting standard are in
 the [evaluation evidence guide](../docs/evaluation_evidence_guide.md).
 
+Each completed matrix evaluation also creates automatic forecast and
+matched-seed diagnostic comparison figures plus `matrix_summary.json` under
+`runs/matrix_comparisons/<matrix-name>/<evaluation-label>/`. No additional
+plotting command is required.
+
 The single-checkpoint `slurm/evaluate.sbatch` remains available for debugging.
 
 ## 6. Cluster-use rules
