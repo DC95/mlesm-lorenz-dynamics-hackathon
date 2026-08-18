@@ -33,7 +33,7 @@ would contradict it.
 From the activated `starter/` directory:
 
 ```bash
-sha256sum -c data/SHA256SUMS
+(cd data && sha256sum -c SHA256SUMS)
 
 team_b_job=$(sbatch --parsable \
   --account="$HACKATHON_ACCOUNT" \

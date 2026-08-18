@@ -1,0 +1,5 @@
+# Team A continuation after matrix_shared_baseline_seeds.txt has produced A0.
+# config seed output_directory
+configs/train_a1_direct_multistep.json 41 runs/a1_direct_multistep_seed41
+configs/train_a1_direct_multistep.json 42 runs/a1_direct_multistep_seed42
+configs/train_a1_direct_multistep.json 43 runs/a1_direct_multistep_seed43

@@ -36,8 +36,15 @@ would contradict it.
 From the activated `starter/` directory:
 
 ```bash
-sha256sum -c data/SHA256SUMS
+(cd data && sha256sum -c SHA256SUMS)
+```
 
+First reproduce the shared baseline as described in the
+[participant command reference](commands_and_outputs.md). That command has
+already trained A0 at seeds 41--43, so the Team A continuation must train only
+A1 rather than overwrite the A0 checkpoints.
+
+```bash
 team_a_job=$(sbatch --parsable \
   --account="$HACKATHON_ACCOUNT" \
   --job-name=lorenz-team-a \
@@ -45,7 +52,7 @@ team_a_job=$(sbatch --parsable \
   --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-%j.out" \
   --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-%j.err" \
   slurm/train_matrix.sbatch \
-  configs/matrix_team_a_seeds.txt)
+  configs/matrix_team_a_a1_only_seeds.txt)
 
 echo "Team A training job: $team_a_job"
 ```
@@ -63,7 +70,7 @@ team_a_eval_job=$(sbatch --parsable \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_a_seeds.txt \
   data/standard_benchmark.npz \
-  standard_rho28)
+  team_a_rho28)
 
 echo "Team A evaluation job: $team_a_eval_job"
 ```

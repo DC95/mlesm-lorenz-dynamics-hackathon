@@ -8,6 +8,8 @@ Read the assigned [Team A](../docs/team_a_rollout_fidelity.md) or
 [Team B](../docs/team_b_changing_dynamics.md) guide before launching the
 mandatory matrix. Record every job in the
 [experiment ledger](../docs/templates/experiment_ledger.md).
+For a single copy-paste path from login to outputs, use the
+[participant command and output reference](../docs/commands_and_outputs.md).
 
 Official system documentation:
 
@@ -66,7 +68,7 @@ if [[ ! -e runs && ! -L runs ]]; then
     ln -s "$HACKATHON_RUN_ROOT/runs" runs
 fi
 
-sha256sum -c data/SHA256SUMS
+(cd data && sha256sum -c SHA256SUMS)
 ```
 
 ## 2. Smoke test
@@ -112,10 +114,10 @@ sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/train_matrix.sbatch \
   configs/matrix_shared_baseline_seeds.txt
 
-# Team A mandatory comparison: six experiments
+# Team A after the shared baseline: three A1 experiments
 sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/train_matrix.sbatch \
-  configs/matrix_team_a_seeds.txt
+  configs/matrix_team_a_a1_only_seeds.txt
 
 # Team B mandatory comparison: six experiments
 sbatch --account="$HACKATHON_ACCOUNT" \
@@ -139,14 +141,14 @@ sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_shared_baseline_seeds.txt \
   data/standard_benchmark.npz \
-  standard_rho28
+  shared_baseline_rho28
 
 # Team A at rho=28
 sbatch --account="$HACKATHON_ACCOUNT" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_a_seeds.txt \
   data/standard_benchmark.npz \
-  standard_rho28
+  team_a_rho28
 
 # Team B on rho=24 and rho=30
 sbatch --account="$HACKATHON_ACCOUNT" \

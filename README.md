@@ -41,6 +41,7 @@ The original workshop introduced the path from the Lorenz equations to a neural 
 | Team A's mandatory comparison and commands | [`docs/team_a_rollout_fidelity.md`](docs/team_a_rollout_fidelity.md) |
 | Team B's mandatory comparison and commands | [`docs/team_b_changing_dynamics.md`](docs/team_b_changing_dynamics.md) |
 | The 2.5-day workflow and scientific gates | [`docs/participant_schedule.md`](docs/participant_schedule.md) |
+| The copy-paste JURECA commands, job monitoring, and output locations | [`docs/commands_and_outputs.md`](docs/commands_and_outputs.md) |
 | The experiment, result, and presentation templates | [`docs/templates/`](docs/templates/) |
 | What is complete and what must happen before release | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 | The implementation and commands | [`starter/README.md`](starter/README.md) |

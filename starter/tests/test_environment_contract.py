@@ -4,6 +4,8 @@ import unittest
 
 STARTER_ROOT = Path(__file__).resolve().parents[1]
 ENVIRONMENT_ROOT = STARTER_ROOT / "environment"
+SCRIPTS_ROOT = STARTER_ROOT / "scripts"
+SLURM_ROOT = STARTER_ROOT / "slurm"
 
 
 class EnvironmentContractTests(unittest.TestCase):
@@ -33,6 +35,25 @@ class EnvironmentContractTests(unittest.TestCase):
 
         self.assertNotIn("pip install -e", setup)
         self.assertNotIn("pip install --editable", setup)
+
+    def test_login_preflight_checks_data_tests_and_scratch(self):
+        preflight = (SCRIPTS_ROOT / "preflight_login.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("(cd data && sha256sum -c SHA256SUMS)", preflight)
+        self.assertNotIn("sha256sum -c data/SHA256SUMS", preflight)
+        self.assertIn("python -m unittest discover -s tests -v", preflight)
+        self.assertIn('touch "${test_file}"', preflight)
+        self.assertIn("HACKATHON_RUN_ROOT", preflight)
+
+    def test_gpu_preflight_requests_and_exercises_cuda(self):
+        preflight = (SLURM_ROOT / "preflight.sbatch").read_text(encoding="utf-8")
+
+        self.assertIn("#SBATCH --partition=dc-gpu-devel", preflight)
+        self.assertIn("#SBATCH --gres=gpu:1", preflight)
+        self.assertIn("torch.cuda.is_available()", preflight)
+        self.assertIn("loss.backward()", preflight)
 
 
 if __name__ == "__main__":
