@@ -32,3 +32,12 @@ while read -r config_path experiment_seed output_directory extra; do
         --data "$data_path" \
         --output-dir "$evaluation_directory"
 done < "$matrix_file"
+
+matrix_filename=$(basename "$matrix_file")
+matrix_name=${matrix_filename%.*}
+comparison_directory="runs/matrix_comparisons/$matrix_name/$evaluation_label"
+
+python -m lorenz_hackathon.compare_matrix \
+    --matrix "$matrix_file" \
+    --evaluation-label "$evaluation_label" \
+    --output-dir "$comparison_directory"

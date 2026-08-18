@@ -92,11 +92,14 @@ quantity and its limitations. There is no single overall model score.
 
 ## Release status
 
-The complete data, training, and evaluation workflow has been rehearsed on
-JURECA-DC. Numerical settings, dataset checksums, Team A's four-step horizon,
-Team B's parameter regimes, and evaluator failure policies are frozen. The
-remaining release gate is a clean participant-like checkout rehearsal,
-tracked in the [organizer roadmap](docs/ROADMAP.md).
+The participant release is public and has been verified from a fresh HTTPS
+clone of a team branch on JURECA-DC. Both dataset checksums, all 22 contract and
+smoke tests, branch-local source isolation, scratch output, and an A100 CUDA
+forward/backward pass succeeded. The two team branches start from the same
+frozen release commit. Complete matrix evaluations automatically create
+matched-seed forecast and diagnostic comparison figures without defining a
+single overall model score. Operational status is recorded in the
+[organizer roadmap](docs/ROADMAP.md).
 
 ## License
 

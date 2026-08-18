@@ -115,6 +115,22 @@ Each checkpoint receives an evaluation directory containing:
   rollout error, stability, perturbation growth, and long-term statistics;
 - one four-panel `model_autopsy_rho_*.png` for every test value of `rho`.
 
+After all matrix rows are evaluated, the same command automatically writes a
+matched-seed comparison under
+`runs/matrix_comparisons/<matrix-name>/<evaluation-label>/`:
+
+- `forecast_comparison_rho_*.png` shows every seed plus the mean and population
+  standard deviation of the forecast-NRMSE curve;
+- `metric_comparison_rho_*.png` shows paired seeds, means, and population
+  standard deviations for ten predictive and dynamical diagnostics; and
+- `matrix_summary.json` preserves the plotted per-seed values, summaries,
+  missing and censored counts, metric directions, provenance, and paired
+  changes.
+
+An open triangle for useful horizon means that NRMSE did not reach one within
+the frozen forecast window; it is not treated as an exact horizon or replaced
+with zero in the JSON summary.
+
 Non-finite predictions are recorded as failures rather than silently omitted.
 If any long emulator rollout is non-finite, its model climate metrics are
 reported as `null`; finite and bounded fractions remain available.
