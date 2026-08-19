@@ -49,3 +49,10 @@ export HACKATHON_ACTIVATE="${script_dir}/activate.sh"
 echo "Activated ${HACKATHON_ENV_NAME}"
 echo "Python source: ${starter_dir}/src"
 echo "Run root: ${HACKATHON_RUN_ROOT}"
+echo "Slurm account: ${HACKATHON_ACCOUNT}"
+echo "Slurm partition: ${HACKATHON_PARTITION}"
+if [[ -n "${HACKATHON_RESERVATION}" ]]; then
+    echo "Slurm reservation: ${HACKATHON_RESERVATION}"
+else
+    echo "No event reservation selected for $(date +%F)." >&2
+fi

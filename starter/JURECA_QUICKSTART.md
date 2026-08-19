@@ -44,7 +44,6 @@ Participants and the organizer activate from their own checkout:
 ```bash
 cd starter
 source environment/activate.sh
-export HACKATHON_ACCOUNT=training2635
 umask 0027
 ```
 
@@ -53,6 +52,21 @@ prepends the current checkout's `src` directory to `PYTHONPATH`. Team branches
 therefore share dependencies without sharing source code. Do not install
 packages inside production jobs; the `dc-gpu` production partition does not
 provide internet access.
+
+For this event, activation selects the reservation from the login node's date:
+
+| Date | Reservation | Window |
+|---|---|---|
+| 2026-08-19 | `challenge_3_and_5_day1` | 13:00--18:00 |
+| 2026-08-20 | `challenge_3_and_5_day2` | 09:00--18:00 |
+| 2026-08-21 | `challenge_3_and_5_day3` | 09:00--12:30 |
+
+Challenge 3 shares all three reservations with Challenge 5. Every supplied GPU
+job requests one node. Keep one serialized job chain per Lorenz team so the two
+teams together use at most two nodes. Use the participant command reference for
+the dependency-safe submission sequence. Re-source `environment/activate.sh`
+each morning: the reservation is fixed at submission and jobs cannot roll from
+one day's reservation into the next.
 
 Create checkout-local links to shared immutable data and per-user scratch
 outputs once:
@@ -80,7 +94,11 @@ python -m unittest discover -s tests -v
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-Repeat the CUDA check in a short development allocation. Use the project account supplied by the organizers.
+Repeat the CUDA check with `slurm/preflight.sbatch` in the active event
+reservation. Use `--account="$HACKATHON_ACCOUNT"`,
+`--partition="$HACKATHON_PARTITION"`, and
+`--reservation="$HACKATHON_RESERVATION"` as shown in the participant command
+reference.
 
 ## 3. Organizer-only dataset regeneration
 
@@ -111,16 +129,22 @@ JURECA-DC GPU nodes contain four A100 GPUs and node allocations are exclusive. T
 ```bash
 # Shared A0 baseline at three seeds plus the linear reference
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/train_matrix.sbatch \
   configs/matrix_shared_baseline_seeds.txt
 
 # Team A after the shared baseline: three A1 experiments
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/train_matrix.sbatch \
   configs/matrix_team_a_a1_only_seeds.txt
 
 # Team B mandatory comparison: six experiments
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/train_matrix.sbatch \
   configs/matrix_team_b_seeds.txt
 ```
@@ -138,6 +162,8 @@ Create a new matrix for extensions. Do not silently edit a frozen organizer matr
 ```bash
 # Shared persistence, linear, and direct-MLP baselines at rho=28
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_shared_baseline_seeds.txt \
   data/standard_benchmark.npz \
@@ -145,6 +171,8 @@ sbatch --account="$HACKATHON_ACCOUNT" \
 
 # Team A at rho=28
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_a_seeds.txt \
   data/standard_benchmark.npz \
@@ -152,6 +180,8 @@ sbatch --account="$HACKATHON_ACCOUNT" \
 
 # Team B on rho=24 and rho=30
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_b_seeds.txt \
   data/multirho_benchmark.npz \
@@ -159,6 +189,8 @@ sbatch --account="$HACKATHON_ACCOUNT" \
 
 # Team B in-distribution check at rho=28
 sbatch --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   slurm/evaluate_matrix.sbatch \
   configs/matrix_team_b_seeds.txt \
   data/standard_benchmark.npz \
@@ -187,4 +219,6 @@ The single-checkpoint `slurm/evaluate.sbatch` remains available for debugging.
 - Preserve the Slurm job ID in the experiment ledger.
 - Use one shared copy of each dataset.
 - Submit coordinated experiment matrices instead of separate one-GPU allocations.
+- Keep every supplied job at `--nodes=1` and no more than one job active per Lorenz team.
+- Always pass the reservation selected in `HACKATHON_RESERVATION` to `sbatch`.
 - Treat environment or scheduler failures as infrastructure failures, not as part of a team's experiment allowance.
