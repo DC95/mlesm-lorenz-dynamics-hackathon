@@ -36,7 +36,10 @@ From the activated `starter/` directory:
 (cd data && sha256sum -c SHA256SUMS)
 
 team_b_job=$(sbatch --parsable \
+  --dependency="afterok:$baseline_job" \
   --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   --job-name=lorenz-team-b \
   --chdir="$(pwd)" \
   --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-%j.out" \
@@ -47,17 +50,21 @@ team_b_job=$(sbatch --parsable \
 echo "Team B training job: $team_b_job"
 ```
 
-Evaluate the three regimes using two matrix jobs after successful training:
+Evaluate the three regimes using two serialized matrix jobs after successful
+training. Serialization keeps Team B to one active node:
 
 ```bash
+previous_job=$baseline_eval_job
 for specification in \
   "data/standard_benchmark.npz in_distribution_rho28" \
   "data/multirho_benchmark.npz multirho_unseen_rho24_30"
 do
   read -r dataset label <<< "$specification"
   job=$(sbatch --parsable \
+    --dependency="afterok:$previous_job" \
     --account="$HACKATHON_ACCOUNT" \
-    --partition=dc-gpu-devel \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name="lorenz-team-b-${label}" \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-${label}-%j.out" \
@@ -67,6 +74,7 @@ do
     "$dataset" \
     "$label")
   echo "$label evaluation job: $job"
+  previous_job=$job
 done
 ```
 

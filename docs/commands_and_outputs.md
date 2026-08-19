@@ -39,13 +39,27 @@ All remaining commands are run from `starter/`:
 ```bash
 cd starter
 source environment/activate.sh
-export HACKATHON_ACCOUNT=training2635
 umask 0027
 ```
 
 Activation uses the shared, organizer-prepared Python environment but imports
 `lorenz_hackathon` from the current checkout. Team branches therefore share
-dependencies without sharing source code.
+dependencies without sharing source code. It also selects the Challenge 3/5
+reservation from the JURECA login node's calendar date:
+
+| Day | Reservation | Access window |
+|---|---|---|
+| 19 August 2026 | `challenge_3_and_5_day1` | 13:00--18:00 |
+| 20 August 2026 | `challenge_3_and_5_day2` | 09:00--18:00 |
+| 21 August 2026 | `challenge_3_and_5_day3` | 09:00--12:30 |
+
+All times are the scheduler's local time. Confirm the printed reservation
+before continuing. Outside these dates, activation deliberately leaves
+`HACKATHON_RESERVATION` empty and the login preflight stops. Re-source
+`environment/activate.sh` at the start of every event day. The reservation is
+fixed when `sbatch` is called: a job submitted to the Day 1 reservation cannot
+roll into Day 2. Submit only work whose requested wall time fits the remaining
+window, and submit unfinished stages under the next day's reservation.
 
 ## 2. Run the login-node preflight
 
@@ -65,6 +79,8 @@ Submit the ten-minute preflight job and remember its job ID:
 ```bash
 preflight_job=$(sbatch --parsable \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-preflight \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-preflight-%j.out" \
@@ -111,6 +127,8 @@ Both teams first submit the same shared baseline:
 ```bash
 baseline_job=$(sbatch --parsable \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-baseline \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-baseline-%j.out" \
@@ -130,6 +148,8 @@ the three A0 checkpoints:
 team_job=$(sbatch --parsable \
     --dependency="afterok:$baseline_job" \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-team-a \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-%j.out" \
@@ -146,6 +166,8 @@ Team B uses this command instead:
 team_job=$(sbatch --parsable \
     --dependency="afterok:$baseline_job" \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-team-b \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-%j.out" \
@@ -157,6 +179,10 @@ echo "Team B job: $team_job"
 ```
 
 `afterok` prevents the team job from starting if the shared baseline fails.
+Each team keeps all later work in the same dependency chain. Because every
+supplied GPU job requests exactly one node, one active chain per team limits
+Challenge 3 to at most two nodes. Do not submit an independent debug or
+extension job while both team chains are active.
 
 ## 7. Monitor jobs and logs
 
@@ -187,8 +213,10 @@ part of the evaluation directory name.
 
 ```bash
 baseline_eval_job=$(sbatch --parsable \
-    --dependency="afterok:$baseline_job" \
+    --dependency="afterok:$team_job" \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-baseline-eval \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-baseline-eval-%j.out" \
@@ -207,8 +235,10 @@ Team A:
 
 ```bash
 team_eval_job=$(sbatch --parsable \
-    --dependency="afterok:$team_job" \
+    --dependency="afterok:$baseline_eval_job" \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-team-a-eval \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-eval-%j.out" \
@@ -225,8 +255,10 @@ Team B requires separate changed-dynamics and in-distribution evaluations:
 
 ```bash
 team_eval_unseen_job=$(sbatch --parsable \
-    --dependency="afterok:$team_job" \
+    --dependency="afterok:$baseline_eval_job" \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-team-b-unseen \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-unseen-%j.out" \
@@ -237,8 +269,10 @@ team_eval_unseen_job=$(sbatch --parsable \
     multirho_unseen_rho24_30)
 
 team_eval_rho28_job=$(sbatch --parsable \
-    --dependency="afterok:$team_job" \
+    --dependency="afterok:$team_eval_unseen_job" \
     --account="$HACKATHON_ACCOUNT" \
+    --partition="$HACKATHON_PARTITION" \
+    --reservation="$HACKATHON_RESERVATION" \
     --job-name=lorenz-team-b-rho28 \
     --chdir="$(pwd)" \
     --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-rho28-%j.out" \

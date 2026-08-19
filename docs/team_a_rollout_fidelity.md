@@ -46,7 +46,10 @@ A1 rather than overwrite the A0 checkpoints.
 
 ```bash
 team_a_job=$(sbatch --parsable \
+  --dependency="afterok:$baseline_job" \
   --account="$HACKATHON_ACCOUNT" \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   --job-name=lorenz-team-a \
   --chdir="$(pwd)" \
   --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-%j.out" \
@@ -61,8 +64,10 @@ After successful training:
 
 ```bash
 team_a_eval_job=$(sbatch --parsable \
+  --dependency="afterok:$baseline_eval_job" \
   --account="$HACKATHON_ACCOUNT" \
-  --partition=dc-gpu-devel \
+  --partition="$HACKATHON_PARTITION" \
+  --reservation="$HACKATHON_RESERVATION" \
   --job-name=lorenz-team-a-eval \
   --chdir="$(pwd)" \
   --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-a-eval-%j.out" \
