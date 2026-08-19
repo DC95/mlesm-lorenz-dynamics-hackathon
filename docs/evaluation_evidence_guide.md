@@ -1,146 +1,201 @@
-# Evaluation Evidence Guide
+# How to Read the Evaluation Results
 
-## Why the benchmark uses several diagnostics
+This guide is a beginner-friendly map of the benchmark results. The central
+idea is simple:
 
-A small one-step error shows that a model approximates the next sampled state
-near the data distribution. It does not establish that repeated application of
-the model reproduces instability, lobe switching, long-term variability, or
-the response to a changed control parameter. The evaluator therefore assembles
-complementary evidence rather than producing one overall score.
+> A model can predict the next step well and still produce the wrong dynamics
+> when it repeatedly predicts its own future.
 
-The frozen numerical choices are listed in
-[Frozen Benchmark v1.0](frozen_benchmark_v1.0.md). This page defines what each
-reported quantity means, why it is useful, and what it cannot prove.
+For that reason, the evaluator reports several complementary diagnostics
+instead of one overall score. Exact numerical settings are fixed in
+[Frozen Benchmark v1.0](frozen_benchmark_v1.0.md).
 
-## Predictive skill
+## 1. Start with five questions
 
-Let `s = (s_x, s_y, s_z)` be the training-split standard deviation and let
-`e` be prediction minus reference. The normalized root-mean-square error is
+Read the results in this order:
+
+| Question | Evidence to inspect | What you hope to see |
+|---|---|---|
+| 1. Can it predict the next state? | One-step NRMSE and persistence NRMSE | Low error that beats persistence |
+| 2. What happens when it predicts repeatedly? | Forecast-NRMSE curve and useful forecast horizon | Error grows later or more realistically |
+| 3. Does the rollout remain usable? | Finite and within-bound fractions | Values close to 1 |
+| 4. Are the dynamics too sensitive or too smooth? | Perturbation-growth curve and effective growth rate | Growth resembles the RK4 reference |
+| 5. Is the long-term Lorenz behaviour realistic? | Variance, distributions, lobe occupancy, switching, and residence time | Several statistics agree with the reference |
+
+Team B asks one additional question: does the conclusion change when `rho`
+changes?
+
+## 2. Keep four rules in mind
+
+1. **One-step skill is only the starting point.** During one-step evaluation,
+   every input is a true state. During an autoregressive forecast, the model
+   receives its own previous prediction, so errors can feed back and grow.
+2. **Error growth is expected.** Lorenz-63 is chaotic, so an exact trajectory
+   match cannot last forever. Compare how quickly error grows and what happens
+   after trajectories separate.
+3. **A longer forecast horizon is not automatically better.** An overly smooth
+   model may suppress perturbation growth and appear predictable for longer.
+4. **Look for agreement across metrics and seeds.** Conflicting diagnostics or
+   seed-sensitive results are scientific findings, not inconveniences to hide.
+
+## 3. Metrics in plain language
+
+### Predictive skill
+
+| Metric | Meaning | How to read it |
+|---|---|---|
+| One-step RMSE | Next-state error for `x`, `y`, and `z` in physical units | Smaller is better |
+| One-step NRMSE | Combined next-state error after scaling the three variables fairly | `0` is perfect; smaller is better |
+| Persistence NRMSE | Error from assuming that the state does not change | A learned model should beat this simple baseline |
+| Forecast NRMSE | Error after repeatedly feeding predictions back into the model | Read the complete curve, not only one lead |
+| Useful forecast horizon | First lead at which forecast NRMSE reaches `1` | Later is better only if other dynamics remain realistic |
+
+One model step is `0.05` Lorenz time units. If the horizon is `null`, or is
+shown as an open triangle, NRMSE did not reach `1` during the 200-step
+evaluation window. This does not mean the horizon is infinite. A non-finite
+forecast fails at its first non-finite lead.
+
+### Stability and variability
+
+| Metric | Meaning | How to read it |
+|---|---|---|
+| Finite-trajectory fraction | Fraction of 32 long rollouts without NaNs or infinities | `1` is desirable |
+| Within-reference-bound fraction | Fraction of finite rollouts without gross amplitude explosions | `1` is desirable, but this is only a basic safety check |
+| Variance ratio | Model variance divided by reference variance for `x`, `y`, and `z` | Near `1` is desirable; below `1` suggests collapse, above `1` excessive variability |
+
+A finite and bounded trajectory can still converge to the wrong attractor.
+Treat these metrics as gates, not proof of dynamical fidelity.
+
+### Sensitivity to initial conditions
+
+The evaluator begins with two almost identical states and follows how their
+distance changes in the emulator and the RK4 reference.
+
+| Metric | Meaning | How to read it |
+|---|---|---|
+| Perturbation-growth curve | How quickly nearby trajectories separate | Compare its shape and time scale with the reference |
+| Effective growth rate | Compact summary of early, pre-saturation separation | Closer to the reference is better |
+| Finite-pair fraction | Fraction of perturbation pairs still numerically valid at each lead | A drop indicates that numerical failure affects the comparison |
+
+Much faster growth suggests excessive sensitivity. Much slower growth may
+indicate overly damped dynamics. The effective growth rate is a finite-time
+summary, not a rigorous global Lyapunov exponent. A `null` rate means too few
+valid points were available for the fit.
+
+### Long-term behaviour
+
+These statistics compare reference and emulator rollouts of equal duration
+after the same burn-in.
+
+| Metric | Question it answers | How to read it |
+|---|---|---|
+| Mean and standard deviation | Are the centre and spread of `x`, `y`, and `z` similar? | Compare directly with the reference |
+| Wasserstein distance | How different are the one-variable distributions? | Smaller is better |
+| Positive-`x` fraction | Does the model spend a similar amount of time in the two lobes? | Compare with the matching reference |
+| Lobe-switch rate | Does the model move between lobes at the correct frequency? | Compare switches per Lorenz time unit |
+| Mean residence time | Does the model remain in a lobe for a realistic duration? | Compare typical same-lobe duration |
+
+No row is sufficient alone. Correct lobe occupancy can coexist with incorrect
+switching, and correct one-variable distributions can coexist with the wrong
+attractor geometry or temporal ordering.
+
+## 4. Read the automatic figures
+
+Each completed evaluation matrix creates two figure types for every tested
+`rho`.
+
+### Forecast comparison figure
+
+This shows every seed's forecast-NRMSE curve, the model mean and population
+standard deviation, persistence, and the NRMSE threshold. First check whether
+the seeds tell a consistent story; then compare the model means.
+
+### Diagnostic comparison figure
+
+This compares matched seeds for ten predictive and dynamical summaries.
+Connected seed pairs show whether a change is consistent across seeds.
+
+Use these directions:
+
+- lower is better for error and mismatch metrics;
+- higher is better for useful horizon and finite/bounded fractions;
+- values derived from model-reference differences should approach zero;
+- missing values are unavailable or failed evidence, not zeros; and
+- no panel is an overall model ranking.
+
+Exact values and missing counts are stored in `matrix_summary.json`. The
+single-checkpoint model-autopsy figure is useful for diagnosis, but never choose
+a conclusion from one visually attractive seed.
+
+## 5. Team A reading order
+
+Team A compares one-step training (A0) with four-step closed-loop training
+(A1). Ask:
+
+1. Did one-step skill remain comparable?
+2. Did the full forecast curve and useful horizon improve consistently across
+   seeds?
+3. Is any horizon change supported by realistic perturbation growth?
+4. Did stability, variability, distributions, and lobe behaviour remain
+   realistic?
+5. What improved, what worsened, and what remained seed-sensitive?
+
+Describe the result as a trade-off rather than simply naming a winner. A1 also
+performs more model evaluations during training, so A0 and A1 are not an
+equal-compute comparison.
+
+## 6. Team B reading order
+
+Team B compares the state-only model (B1) with the `rho`-conditioned model
+(B2). Analyse each regime separately:
+
+1. `rho=28`: in-distribution control on independent trajectories;
+2. `rho=30`: unseen interpolation inside the training range; and
+3. `rho=24`: out-of-range extrapolation.
+
+Apply the five-question sequence at every `rho`. Do not average the three
+regimes into one result. Success at `rho=28` or `rho=30` does not prove
+extrapolation at `rho=24`.
+
+## 7. A simple conclusion template
+
+> Compared with **[reference model]**, **[tested model]** improved/worsened
+> **[forecast evidence]** across **[number]** of three seeds. This change
+> was/was not supported by **[perturbation evidence]** and **[long-term
+> evidence]**. The strongest disagreement or limitation was **[limitation]**.
+> We therefore find evidence for **[narrow claim]**, but the results do not
+> establish **[stronger unsupported claim]**.
+
+For Team B, state whether the claim concerns in-distribution skill,
+interpolation, or extrapolation.
+
+## 8. Minimum reporting checklist
+
+For every mandatory neural configuration:
+
+- show seeds 41, 42, and 43 individually;
+- report the mean and population standard deviation (`ddof=0`);
+- include one-step NRMSE and the complete forecast-NRMSE curve;
+- check finite and bounded fractions before interpreting long-term metrics;
+- compare perturbation growth and long-term behaviour with the matching RK4
+  reference;
+- state which diagnostics agree, disagree, or remain seed-sensitive; and
+- state the strongest limitation.
+
+No individual metric proves that the emulator learned the dynamics. The claim
+becomes stronger only when predictive skill, stability, sensitivity, long-term
+behaviour, and - for Team B - parameter response tell a consistent story.
+
+## 9. Exact NRMSE definition
+
+Let `s = (s_x, s_y, s_z)` be the standard deviation calculated from the
+training split, and let `e` be prediction minus reference. The evaluator uses
 
 $$
 \mathrm{NRMSE}=\sqrt{\operatorname{mean}\left[(e/s)^2\right]},
 $$
 
 where division is component-wise and the mean is taken over trajectories and
-state variables.
-
-| Diagnostic | Exact meaning | Evidence supplied | Important limitation |
-|---|---|---|---|
-| One-step RMSE | Physical-coordinate RMSE for `x`, `y`, and `z` over all public-test transitions | Local next-state accuracy | Can be excellent for a map that fails when composed with itself |
-| One-step NRMSE | Joint standardized error over all test transitions and variables | Comparable summary of local predictive skill | Does not measure autoregressive dynamics |
-| Persistence NRMSE | Error from predicting that the state does not change | Checks that the learned map beats a trivial near-identity baseline | Beating persistence is necessary, not sufficient |
-| NRMSE by lead | Error after repeatedly feeding each prediction back into the model | Shows how errors accumulate under closed-loop use | Pointwise trajectory agreement is inherently time-limited in a chaotic system |
-| Useful forecast horizon | First lead at which forecast NRMSE reaches 1; a non-finite lead also fails immediately | Compact measure of the duration of useful trajectory information | Depends on the frozen normalization and threshold; the complete lead-time curve must also be shown |
-
-If NRMSE never reaches 1 during the 200-step evaluation window, the JSON value
-is `null`; this means “not crossed within the evaluated window,” not an infinite
-horizon. Lead time is reported in Lorenz time units, with one model step equal
-to 0.05.
-
-## Numerical stability and variability
-
-| Diagnostic | Exact meaning | Evidence supplied | Important limitation |
-|---|---|---|---|
-| Finite-trajectory fraction | Fraction of 32 long rollouts containing only finite values | Detects numerical divergence, overflow, and NaNs | A finite trajectory can converge to the wrong fixed point or attractor |
-| Within-reference-bound fraction | Fraction of finite rollouts whose state-vector norm remains below five times the 99.9th percentile of the reference norm | Detects gross amplitude explosions | The bound is deliberately broad and is only a sanity screen |
-| Variance ratio | Emulator variance divided by reference variance, separately for `x`, `y`, and `z`, after common burn-in | Detects collapse (`<1`) or excessive dispersion (`>1`) | Matching three marginal variances does not establish correct geometry or transitions |
-
-Finiteness and boundedness are gates. Passing them is not strong evidence of
-dynamical fidelity.
-
-## Sensitivity to initial conditions
-
-The evaluator starts paired trajectories with separation
-`1e-5 * ||training_state_std||`, rolls both the RK4 system and emulator forward,
-and records the median separation at each lead. It fits
-
-$$
-\log d(t) \approx a + \lambda_{\mathrm{eff}}t
-$$
-
-only in the frozen pre-saturation distance window.
-
-| Diagnostic | Evidence supplied | Important limitation |
-|---|---|---|
-| Perturbation-growth curve | Whether nearby emulator trajectories separate on a similar time scale and with a similar shape to the reference | Sensitive to the chosen initial states, distance norm, and finite evaluation window |
-| Effective growth rate | Compact comparison of early exponential-like separation | It is not a rigorous or global Lyapunov exponent; `null` means fewer than three valid fit points |
-| Finite-pair fraction by lead | Reveals when perturbation comparisons are lost to numerical failure | Does not diagnose the cause of the failure |
-
-A model can have a longer forecast horizon because it is overly dissipative.
-That is why forecast horizon and perturbation growth must be interpreted
-together.
-
-## Long-term or climate-like behaviour
-
-All long-term statistics use reference and emulator rollouts of equal duration
-after the same 20-time-unit burn-in.
-
-| Diagnostic | Exact meaning | Evidence supplied | Important limitation |
-|---|---|---|---|
-| Mean and standard deviation | Marginal first and second moments of `x`, `y`, and `z` | Bias and amplitude fidelity | Low-order moments do not define an attractor |
-| Wasserstein distance | Mean absolute separation between 999 corresponding marginal quantiles for each variable | Distributional mismatch in physical units | One-dimensional marginals omit joint geometry and temporal ordering |
-| Positive-`x` fraction | Fraction of samples with `x >= 0` | Relative occupancy of the two Lorenz lobes | Correct occupancy can coexist with incorrect switching |
-| Lobe-switch rate | Mean number of sign changes of `x` per Lorenz time unit | Frequency of transitions between lobes | Does not describe the full residence-time distribution or transition path |
-| Mean residence time | Mean duration of contiguous same-sign-`x` segments, including the first and last observed segments | Typical persistence within a lobe | Finite-window censoring affects boundary segments; report it as an observed-window summary |
-
-The four-panel model autopsy combines the forecast curve, one representative
-long-term phase-space projection, perturbation growth, and an `x`-distribution
-comparison. The plot is diagnostic evidence, not a substitute for ensemble
-statistics.
-
-## Automatic matrix-level figures
-
-After the last checkpoint in an evaluation matrix, the workflow automatically
-aggregates the matched seeds. For every evaluated `rho` it writes:
-
-- a forecast figure with individual seed curves, the model mean and population
-  standard deviation, persistence, and the frozen NRMSE threshold; and
-- a ten-panel diagnostic figure with matched-seed lines, seed values, means,
-  and population standard deviations for one-step NRMSE, useful horizon,
-  finite and bounded fractions, growth-rate error, variance-ratio error, lobe
-  occupancy error, switching error, residence-time error, and mean
-  Wasserstein distance.
-
-The figures are generated from the complete matrix, never from a selected best
-seed. An open useful-horizon triangle means the threshold was not crossed
-within the evaluation window. Missing dynamical metrics remain missing and
-are counted in `matrix_summary.json`; they are not silently replaced by zero.
-The dashboard is a visual comparison, not an overall model ranking.
-
-## Team-specific reasoning
-
-### Team A: one-step versus four-step training
-
-Ask whether the closed-loop four-step loss changes useful forecast horizon,
-then test whether any gain is accompanied by realistic perturbation growth,
-variance, lobe occupancy, switching, residence time, and state distributions.
-A defensible conclusion must report trade-offs rather than declaring a winner
-from horizon alone.
-
-### Team B: state-only versus `rho`-conditioned training
-
-Compare B1 and B2 at matched seeds for:
-
-- `rho=28`, an in-distribution control using independent test trajectories;
-- `rho=30`, unseen interpolation within the training range; and
-- `rho=24`, out-of-range extrapolation across changed dynamics.
-
-Interpolation and extrapolation are separate claims. Success at `rho=28` or
-`rho=30` is not evidence that the model extrapolates correctly at `rho=24`.
-
-## Minimum reporting standard
-
-For every mandatory neural configuration:
-
-1. report seeds 41, 42 and 43 individually;
-2. report the three-seed mean and population standard deviation (`ddof=0`);
-3. include one-step NRMSE and the full forecast-error curve;
-4. report finite and bounded fractions before interpreting climate metrics;
-5. compare perturbation growth, variance, lobe statistics and Wasserstein
-   distance against the matching RK4 reference;
-6. state which diagnostics improve, worsen or remain seed-sensitive; and
-7. state the strongest limitation of the conclusion.
-
-No individual metric proves that the emulator learned the dynamics. The claim
-becomes stronger only when predictive, stability, sensitivity, long-term and
-parameter-response evidence agree.
+state variables. Frozen rollout lengths, burn-in, perturbation size, bounds,
+fit windows, and quantiles are documented in
+[Frozen Benchmark v1.0](frozen_benchmark_v1.0.md).
