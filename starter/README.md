@@ -21,36 +21,51 @@ Team-specific instructions are in the
 [experiment and reporting templates](../docs/templates/) from the beginning of
 the investigation. Participants starting from a fresh JURECA login should use
 the copy-paste [command and output reference](../docs/commands_and_outputs.md).
+Participants running on a laptop, workstation, or Google Colab should use the
+[local and Colab quick start](LOCAL_AND_COLAB_QUICKSTART.md).
 
-## 1. Environment and tests
+## 1. Choose where to run
 
-From this directory:
+From `starter/`, select the runtime once:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[test]"
-python -m unittest discover -s tests -v
+bash scripts/select_runtime.sh local   # laptop or workstation
+# bash scripts/select_runtime.sh colab # Google Colab
+# bash scripts/select_runtime.sh jureca
+
+bash scripts/run.sh prepare
+bash scripts/run.sh status
 ```
 
-On JURECA, use the reproducible shared environment and Slurm scripts. The
-environment shares pinned dependencies while resolving `lorenz_hackathon` from
-the current team's checkout and branch. See
-[JURECA_QUICKSTART.md](JURECA_QUICKSTART.md).
+With no argument, `select_runtime.sh` asks the same question interactively.
+Local mode creates `.venv`; Colab uses its current Python environment; JURECA
+uses the shared pinned environment and reservation. `prepare` generates and
+checksum-verifies the frozen data only for local/Colab. JURECA continues to use
+the organizer's immutable shared copies. The model configuration uses
+`device=auto`, so local and Colab select CUDA when available and CPU otherwise.
 
-## 2. Link and verify the frozen datasets and run directory
+For the complete Team B workflow on any selected runtime:
 
 ```bash
-test -e data || ln -s "$HACKATHON_SHARED_ROOT/data" data
-mkdir -p "$HACKATHON_RUN_ROOT/runs"
-test -e runs || ln -s "$HACKATHON_RUN_ROOT/runs" runs
+bash scripts/run.sh team-b
+```
 
+On local/Colab this runs directly and keeps the terminal or notebook cell
+occupied. On JURECA it submits one serialized training/evaluation chain and
+prints the three Slurm job IDs. See
+[JURECA_QUICKSTART.md](JURECA_QUICKSTART.md) for the manual Slurm path.
+
+## 2. Verify the frozen datasets
+
+```bash
 (cd data && sha256sum -c SHA256SUMS)
 ```
 
-Participants use the shared frozen copies. Dataset regeneration is an
-organizer reproducibility operation, not a participant step.
+The preceding `bash scripts/run.sh prepare` command creates the appropriate
+`data` and `runs` locations. On JURECA, participants use the shared frozen
+copies. Local and Colab mode recreate byte-identical files from the frozen
+generator configurations and verify the published SHA-256 checksums before
+training.
 
 The standard dataset uses `rho = 28` for trajectory-disjoint training, validation, and test splits. The multi-`rho` dataset uses `rho = 26, 28, 32` for training and validation, with different trajectories in each split, and `rho = 24, 30` for the public changed-dynamics test.
 
@@ -63,7 +78,7 @@ Normalization is always computed from the training split of the selected dataset
 The shared baseline matrix trains the direct one-step MLP at seeds 41–43 and one linear reference at seed 42:
 
 ```bash
-bash scripts/train_matrix_worker.sh configs/matrix_shared_baseline_seeds.txt
+bash scripts/run.sh train configs/matrix_shared_baseline_seeds.txt
 ```
 
 Persistence requires no training. It is evaluated as a no-change rollout at every forecast lead and appears beside the learned model in each forecast-skill panel.
@@ -72,37 +87,41 @@ Persistence requires no training. It is evaluated as a no-change rollout at ever
 
 ```bash
 # Team A after the shared baseline: train A1 at matched seeds 41–43
-bash scripts/train_matrix_worker.sh configs/matrix_team_a_a1_only_seeds.txt
+bash scripts/run.sh train configs/matrix_team_a_a1_only_seeds.txt
 
 # Team B: B1 state-only vs B2 state-plus-rho, matched seeds 41–43
-bash scripts/train_matrix_worker.sh configs/matrix_team_b_seeds.txt
+bash scripts/run.sh train configs/matrix_team_b_seeds.txt
 ```
 
-On a four-task JURECA job, a worker processes another row after its first experiment finishes, so the six-row team matrices do not require six GPUs.
+Local and Colab execute these commands directly. On JURECA each command
+returns a job ID; add that ID as the final argument of a later `train` or
+`evaluate` command to create an `afterok` dependency. On a four-task JURECA
+job, a worker processes another row after its first experiment finishes, so
+the six-row team matrices do not require six GPUs.
 
 ## 5. Evaluate complete matrices
 
 ```bash
 # Shared persistence, linear, and direct-MLP baselines at rho=28
-bash scripts/evaluate_matrix.sh \
+bash scripts/run.sh evaluate \
   configs/matrix_shared_baseline_seeds.txt \
   data/standard_benchmark.npz \
   shared_baseline_rho28
 
 # Team A at rho=28
-bash scripts/evaluate_matrix.sh \
+bash scripts/run.sh evaluate \
   configs/matrix_team_a_seeds.txt \
   data/standard_benchmark.npz \
   team_a_rho28
 
 # Team B on unseen parameter values
-bash scripts/evaluate_matrix.sh \
+bash scripts/run.sh evaluate \
   configs/matrix_team_b_seeds.txt \
   data/multirho_benchmark.npz \
   multirho_unseen_rho24_30
 
 # Team B in-distribution reference at rho=28
-bash scripts/evaluate_matrix.sh \
+bash scripts/run.sh evaluate \
   configs/matrix_team_b_seeds.txt \
   data/standard_benchmark.npz \
   in_distribution_rho28
@@ -126,6 +145,12 @@ matched-seed comparison under
 - `matrix_summary.json` preserves the plotted per-seed values, summaries,
   missing and censored counts, metric directions, provenance, and paired
   changes.
+
+After both Team B evaluation labels are available, the workflow additionally
+writes `three_regime_summary/team_b_three_regime_summary.png`. This
+presentation-ready figure places the `rho=28` control, `rho=30` interpolation,
+and `rho=24` extrapolation evidence in three columns without combining them
+into one score.
 
 An open triangle for useful horizon means that NRMSE did not reach one within
 the frozen forecast window; it is not treated as an exact horizon or replaced

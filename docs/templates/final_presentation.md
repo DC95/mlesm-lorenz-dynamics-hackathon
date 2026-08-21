@@ -40,6 +40,9 @@ more than seven main slides. Put detailed per-seed tables in backup slides.
 - Which diagnostics contradict one another.
 - Seed sensitivity and any failed or `null` metric.
 - Team B must separate in-distribution, interpolation and extrapolation claims.
+- Team B may use `team_b_three_regime_summary.png` here: read its columns in
+  the order `rho=28`, `rho=30`, `rho=24` and do not turn the directional seed
+  counts into an overall score.
 
 ## Slide 7: Conclusion and limitation - 1.5 minutes
 

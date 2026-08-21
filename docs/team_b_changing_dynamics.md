@@ -30,53 +30,33 @@ would contradict it.
 
 ## Run the comparison
 
-From the activated `starter/` directory:
+From `starter/`, choose the available runtime once. Use `local` for a laptop
+or workstation, `colab` for Google Colab, or `jureca` when the HPC system is
+available:
 
 ```bash
-(cd data && sha256sum -c SHA256SUMS)
-
-team_b_job=$(sbatch --parsable \
-  --dependency="afterok:$baseline_job" \
-  --account="$HACKATHON_ACCOUNT" \
-  --partition="$HACKATHON_PARTITION" \
-  --reservation="$HACKATHON_RESERVATION" \
-  --job-name=lorenz-team-b \
-  --chdir="$(pwd)" \
-  --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-%j.out" \
-  --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-%j.err" \
-  slurm/train_matrix.sbatch \
-  configs/matrix_team_b_seeds.txt)
-
-echo "Team B training job: $team_b_job"
+bash scripts/select_runtime.sh local
+bash scripts/run.sh prepare
+bash scripts/run.sh team-b
 ```
 
-Evaluate the three regimes using two serialized matrix jobs after successful
-training. Serialization keeps Team B to one active node:
+With no argument, `select_runtime.sh` displays an interactive choice. The
+scientific workflow is identical in all three cases:
 
-```bash
-previous_job=$baseline_eval_job
-for specification in \
-  "data/standard_benchmark.npz in_distribution_rho28" \
-  "data/multirho_benchmark.npz multirho_unseen_rho24_30"
-do
-  read -r dataset label <<< "$specification"
-  job=$(sbatch --parsable \
-    --dependency="afterok:$previous_job" \
-    --account="$HACKATHON_ACCOUNT" \
-    --partition="$HACKATHON_PARTITION" \
-    --reservation="$HACKATHON_RESERVATION" \
-    --job-name="lorenz-team-b-${label}" \
-    --chdir="$(pwd)" \
-    --output="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-${label}-%j.out" \
-    --error="$HACKATHON_RUN_ROOT/slurm/lorenz-team-b-${label}-%j.err" \
-    slurm/evaluate_matrix.sbatch \
-    configs/matrix_team_b_seeds.txt \
-    "$dataset" \
-    "$label")
-  echo "$label evaluation job: $job"
-  previous_job=$job
-done
-```
+1. `prepare` establishes the Python environment, verifies the tests and makes
+   the two checksum-verified frozen datasets available;
+2. `team-b` trains B1 and B2 for matched seeds 41--43; and
+3. the same command evaluates `rho=28`, `rho=30`, and `rho=24` and builds the
+   comparison figures.
+
+Local and Colab execute the stages sequentially in the current terminal or
+notebook cell. The configurations use `device=auto`, so PyTorch selects an
+available GPU and otherwise runs on the CPU. JURECA submits a training job and
+two dependency-linked evaluation jobs, keeping Team B to one active node. See
+[`starter/LOCAL_AND_COLAB_QUICKSTART.md`](../starter/LOCAL_AND_COLAB_QUICKSTART.md)
+for copy-paste local and Colab cells, or
+[`starter/JURECA_QUICKSTART.md`](../starter/JURECA_QUICKSTART.md) for the
+manual Slurm commands.
 
 The resulting evidence must be separated into:
 
@@ -88,6 +68,15 @@ Each evaluation job automatically creates separate B1/B2 matched-seed figures
 for every `rho` in that dataset under
 `runs/matrix_comparisons/matrix_team_b_seeds/<evaluation-label>/`, together
 with a machine-readable `matrix_summary.json`.
+
+After both Team B evaluation labels are complete, the workflow also creates a
+presentation-ready overview in
+`runs/matrix_comparisons/matrix_team_b_seeds/three_regime_summary/`. The figure
+uses three columns in the required scientific order: `rho=28`
+(in-distribution), `rho=30` (interpolation), and `rho=24` (extrapolation). Each
+column combines the matched-seed forecast curves with a compact B1/B2 evidence
+table. The directional seed count is a consistency aid, not an overall score
+or significance test.
 
 ## Evidence checklist
 

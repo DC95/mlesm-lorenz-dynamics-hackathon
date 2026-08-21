@@ -4,6 +4,10 @@ This page records the JURECA software stack rehearsed for the August 2026
 event. The versions are pinned in `environment/modules.sh`; update and rehearse
 that file before reusing the challenge on a later JSC software stage.
 
+If JURECA is unavailable, do not wait for the scheduler: use the
+[local and Google Colab path](LOCAL_AND_COLAB_QUICKSTART.md). It preserves the
+same configs, frozen data checksums, seeds, evaluator, and output structure.
+
 Read the assigned [Team A](../docs/team_a_rollout_fidelity.md) or
 [Team B](../docs/team_b_changing_dynamics.md) guide before launching the
 mandatory matrix. Record every job in the

@@ -1,7 +1,9 @@
 # Participant Commands and Outputs
 
-This is the shortest operational path from a fresh JURECA login to trained
-models, evaluation artifacts, and figures. Read the assigned
+This is the detailed operational path from a fresh JURECA login to trained
+models, evaluation artifacts, and figures. If JURECA is unavailable, use the
+[local and Colab quick start](../starter/LOCAL_AND_COLAB_QUICKSTART.md); it
+runs the same frozen configurations and evaluations without Slurm. Read the assigned
 [Team A](team_a_rollout_fidelity.md) or
 [Team B](team_b_changing_dynamics.md) guide for the scientific question and
 the [evaluation evidence guide](evaluation_evidence_guide.md) before
@@ -303,6 +305,10 @@ runs/matrix_comparisons/<matrix-name>/<evaluation-label>/
 ├── matrix_summary.json
 ├── forecast_comparison_rho_*.png
 └── metric_comparison_rho_*.png
+
+runs/matrix_comparisons/matrix_team_b_seeds/three_regime_summary/
+├── team_b_three_regime_summary.json
+└── team_b_three_regime_summary.png
 ```
 
 List all generated result files and figures with:
@@ -311,9 +317,11 @@ List all generated result files and figures with:
 find runs -type f \
     \( -name 'benchmark_results.json' \
        -o -name 'matrix_summary.json' \
+       -o -name 'team_b_three_regime_summary.json' \
        -o -name 'model_autopsy_rho_*.png' \
        -o -name 'forecast_comparison_rho_*.png' \
-       -o -name 'metric_comparison_rho_*.png' \) \
+       -o -name 'metric_comparison_rho_*.png' \
+       -o -name 'team_b_three_regime_summary.png' \) \
     -print | sort
 ```
 
@@ -325,6 +333,24 @@ automatically produces matrix-level forecast and matched-seed diagnostic
 figures. `matrix_summary.json` records the per-seed values, population
 statistics, missing and censored counts, metric directions, and paired changes
 used in those figures.
+
+For Team B, the final evaluation also combines `rho=28`, `rho=30`, and
+`rho=24` into `team_b_three_regime_summary.png`. Its top row shows B1/B2
+forecast-NRMSE means and population-standard-deviation bands. The lower row
+shows selected predictive, stability, sensitivity, and long-term metrics as
+mean +/- population standard deviation, plus the number of matched seeds whose
+change favors B2. This is a cross-regime reading aid, not a composite score.
+
+If the two evaluation labels were completed in separate sessions and the
+combined figure was deferred, regenerate it without rerunning evaluation:
+
+```bash
+python -m lorenz_hackathon.compare_team_b_regimes \
+    --matrix configs/matrix_team_b_seeds.txt \
+    --comparison-root runs/matrix_comparisons/matrix_team_b_seeds \
+    --output-dir \
+        runs/matrix_comparisons/matrix_team_b_seeds/three_regime_summary
+```
 
 ## 11. Common failures
 

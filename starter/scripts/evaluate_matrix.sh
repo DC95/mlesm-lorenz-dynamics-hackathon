@@ -41,3 +41,27 @@ python -m lorenz_hackathon.compare_matrix \
     --matrix "$matrix_file" \
     --evaluation-label "$evaluation_label" \
     --output-dir "$comparison_directory"
+
+# Team B's in-distribution and changed-dynamics evaluations are separate jobs.
+# Once both matrix summaries exist, combine them into one presentation-ready
+# three-regime overview. A stale result from an earlier run may temporarily
+# fail the checkpoint-consistency check; defer without invalidating the newly
+# completed evaluation because the second current evaluation will retry.
+if [[ "$matrix_name" == "matrix_team_b_seeds" ]]; then
+    team_b_comparison_root="runs/matrix_comparisons/$matrix_name"
+    rho28_summary="$team_b_comparison_root/in_distribution_rho28/matrix_summary.json"
+    changed_summary="$team_b_comparison_root/multirho_unseen_rho24_30/matrix_summary.json"
+    combined_directory="$team_b_comparison_root/three_regime_summary"
+
+    if [[ -f "$rho28_summary" && -f "$changed_summary" ]]; then
+        if ! python -m lorenz_hackathon.compare_team_b_regimes \
+            --matrix "$matrix_file" \
+            --comparison-root "$team_b_comparison_root" \
+            --output-dir "$combined_directory"
+        then
+            echo "Team B three-regime summary deferred until both current evaluations are complete." >&2
+        fi
+    else
+        echo "Team B three-regime summary deferred until both evaluation labels are complete."
+    fi
+fi

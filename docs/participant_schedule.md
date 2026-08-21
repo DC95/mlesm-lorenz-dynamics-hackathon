@@ -7,11 +7,11 @@ complete three-seed evaluation.
 
 ## Before the event
 
-- Confirm JSC login and project membership.
+- Confirm either JSC access or a working local/Colab Python runtime.
 - Clone the assigned team branch.
-- Activate the shared environment.
+- Select and prepare the chosen runtime.
 - Verify both frozen dataset checksums.
-- Run the unit tests and a CUDA smoke test in an allocation.
+- Run the unit tests and confirm whether PyTorch selected CPU or CUDA.
 - Read the Lorenz primer, scientific contract, frozen benchmark and evaluation
   evidence guide.
 
